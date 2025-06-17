@@ -1,0 +1,153 @@
+import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'navigation_widgets.dart';
+import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/timetable/presentation/pages/timetable_page.dart';
+import '../../features/stops/presentation/pages/map_page.dart';
+import '../../features/favorites/presentation/pages/favorites_page.dart';
+import '../../features/more/presentation/pages/more_page.dart';
+
+class MainNavigationWrapper extends StatefulWidget {
+  const MainNavigationWrapper({super.key});
+
+  @override
+  State<MainNavigationWrapper> createState() => _MainNavigationWrapperState();
+}
+
+class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
+  int _currentIndex = 0;
+  final PageController _pageController = PageController();
+
+  void _navigateToHome() {
+    setState(() {
+      _currentIndex = 0;
+    });
+    _pageController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  List<Widget> get _pages => [
+    const HomePage(),
+    const TimetablePage(),
+    MapPage(onNavigateToHome: _navigateToHome),
+    const FavoritesPage(),
+    const MorePage(),
+  ];
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        children: _pages,
+      ),
+      bottomNavigationBar: MainNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+      ),
+      floatingActionButton:
+          _currentIndex ==
+                  2 // Térkép oldal
+              ? AnimatedFloatingActionButton(
+                onPressed: () {
+                  // Közeli megállók keresése
+                  _showNearbyStopsBottomSheet();
+                },
+                icon: Symbols.my_location,
+                tooltip: 'Saját helyzet',
+              )
+              : null,
+    );
+  }
+
+  void _showNearbyStopsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => DraggableScrollableSheet(
+            initialChildSize: 0.5,
+            minChildSize: 0.3,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        'Közeli megállók',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: 10,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            leading: const Icon(Symbols.directions_bus),
+                            title: Text('Megálló ${index + 1}'),
+                            subtitle: Text('${(index + 1) * 100}m távolságra'),
+                            trailing: Text('${index + 3} perc'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              // Navigálás a megálló részleteihez
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+    );
+  }
+}
