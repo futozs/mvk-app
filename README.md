@@ -27,7 +27,7 @@ Modern Flutter alkalmazás a Miskolci Városi Közlekedés (MVK) menetrendjének
 
 - **Flutter** - Cross-platform fejlesztés
 - **Bloc** - Állapotkezelés
-- **Google Maps** - Térképmegjelenítés
+- **Openstreetmap** - Térképmegjelenítés
 - **Hive** - Helyi adattárolás
 - **GTFS** - Közlekedési adatok
 - **Material Design** - Modern UI
