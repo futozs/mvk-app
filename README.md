@@ -1,16 +1,56 @@
-# mvk_app
+# MVK App 🚌
 
-A new Flutter project.
+Modern Flutter alkalmazás a Miskolci Városi Közlekedés (MVK) menetrendjének és járatkövetésének megjelenítésére.
 
-## Getting Started
+## ⚠️ FIGYELEM - ALPHA VERZIÓ! ⚠️
 
-This project is a starting point for a Flutter application.
+**🚧 EZ AZ ALKALMAZÁS MÉG CSAK EGY ÖTLET SZINTJÉN VAN! 🚧**
 
-A few resources to get you started if this is your first Flutter project:
+- ❌ **NINCS BEFEJEZVE** - A fejlesztés még korai szakaszban tart
+- ❌ **NEM HASZNÁLHATÓ ÉLES KÖRNYEZETBEN** - Csak tesztelési célokra
+- ❌ **HIÁNYOS FUNKCIÓK** - Sok funkció még nem implementált
+- ❌ **HIBÁK VÁRHATÓAK** - Az alkalmazás instabil lehet
+- 🔄 **FOLYAMATOS FEJLESZTÉS ALATT** - Minden naponta változhat
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+**Ez egy kísérleti projekt és proof-of-concept! Használd saját felelősségre!**
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## ✨ Funkciók
+
+- 📱 Modern, felhasználóbarát felület
+- 🗺️ Interaktív térkép openstreetmap integráció
+- 🚌 Valós idejű járatkövetés
+- ⏰ Részletes menetrend és útvonaltervezés
+- 📍 GPS alapú helymeghatározás
+- 🎨 Szép animációk és átmenetek
+- 💾 Offline adattárolás
+
+## 🚀 Technológiák
+
+- **Flutter** - Cross-platform fejlesztés
+- **Bloc** - Állapotkezelés
+- **Google Maps** - Térképmegjelenítés
+- **Hive** - Helyi adattárolás
+- **GTFS** - Közlekedési adatok
+- **Material Design** - Modern UI
+
+## 🤖 Fejlesztés
+
+Ez az alkalmazás **AI közreműködésével** lett létrehozva "vibe coded" módszerrel - a modern fejlesztés és mesterséges intelligencia kombinációjaként.
+
+## 📱 Futtatás
+
+```bash
+# Függőségek telepítése
+flutter pub get
+
+# Alkalmazás futtatása debug módban
+flutter run --debug
+
+# APK build
+flutter build apk
+```
+
+## 📄 Licensz
+minekaz'
+
+Ez a projekt oktatási és demonstrációs célokra készült.

@@ -1,3 +1,11 @@
+# ÜRES MAPPÁK TÖRLÉSE PARANCS:
+# find . -type d -empty -delete
+#
+# VAGY részletesebb verzió:
+# find . -type d -empty -print -delete
+#
+# VAGY csak kilistázás (törlés nélkül):
+# find . -type d -empty
 
 *.class
 *.log
@@ -21,7 +29,7 @@ migrate_working_dir/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
+.pub
 .pub/
 /build/
 /web/build/
@@ -40,12 +48,10 @@ package-lock.json
 *.sqlite
 *.sqlite3
 from_0_0_3_to_104617_183122_44.sql
-test_*.dart
 test_mobile_api.dart
 test_mvk_api.dart
 test_proxy_integration.dart
 test_stop_84.dart
-*test*.dart
 *.py
 asd.py
 mvk_proxy_server.js

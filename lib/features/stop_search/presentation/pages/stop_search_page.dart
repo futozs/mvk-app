@@ -172,166 +172,212 @@ class _StopSearchPageState extends State<StopSearchPage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: AppColors.getCardColor(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: AppColors.getCardShadow(context),
-          ),
-          child: SingleChildScrollView(
-            controller: scrollController,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.getTextSecondaryColor(context).withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
+      builder:
+          (context) => DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            maxChildSize: 0.9,
+            minChildSize: 0.4,
+            builder:
+                (context, scrollController) => Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.getCardColor(context),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    boxShadow: AppColors.getCardShadow(context),
+                  ),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Handle bar
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.getTextSecondaryColor(
+                                context,
+                              ).withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Fejléc
+                        Row(
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [color, color.withOpacity(0.8)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: color.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  departure.routeDisplayName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Járat információk',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.getTextPrimaryColor(
+                                        context,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    departure.destinationDisplayName,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.getTextSecondaryColor(
+                                        context,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => _trackVehicleOnMap(departure),
+                              icon: Icon(Symbols.map, color: color),
+                              style: IconButton.styleFrom(
+                                backgroundColor: color.withOpacity(0.1),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Részletes információk
+                        _buildDetailSection('Érkezési információ', [
+                          _buildDetailItem(
+                            'Pontos érkezés',
+                            departure.arrivalTime ?? 'Ismeretlen',
+                          ),
+                          _buildDetailItem(
+                            'Hátralévő idő',
+                            _formatArrivalTime(
+                              departure.arrivalMinutes,
+                              departure.arrivalSeconds,
+                            ),
+                          ),
+                          _buildDetailItem(
+                            'Státusz',
+                            departure.isAtStop
+                                ? 'Megállóban várakozik'
+                                : 'Úton van',
+                          ),
+                        ]),
+
+                        const SizedBox(height: 24),
+
+                        _buildDetailSection('Jármű adatok', [
+                          _buildDetailItem('Típus', departure.vehicleTypeText),
+                          _buildDetailItem(
+                            'Akadálymentesség',
+                            departure.isLowFloor
+                                ? 'Akadálymentes jármű'
+                                : 'Akadálymentesség ismeretlen',
+                          ),
+                          _buildDetailItem('Jármű ID', '#${departure.tripId}'),
+                        ]),
+
+                        const SizedBox(height: 24),
+
+                        _buildDetailSection('Útvonal információ', [
+                          _buildDetailItem(
+                            'Célállomás',
+                            departure.destinationDisplayName,
+                          ),
+                          _buildDetailItem(
+                            'Útvonal ID',
+                            '#${departure.routeId}',
+                          ),
+                          _buildDetailItem(
+                            'Megálló ID',
+                            '#${departure.stopId}',
+                          ),
+                        ]),
+
+                        const SizedBox(height: 32),
+
+                        // Akciók
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => _trackVehicleOnMap(departure),
+                                icon: Icon(Symbols.map),
+                                label: Text('Térkép'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: color,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => Navigator.pop(context),
+                                icon: Icon(Symbols.close),
+                                label: Text('Bezárás'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      AppColors.getTextSecondaryColor(
+                                        context,
+                                      ).withOpacity(0.1),
+                                  foregroundColor:
+                                      AppColors.getTextPrimaryColor(context),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                // Fejléc
-                Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [color, color.withOpacity(0.8)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          departure.routeDisplayName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Járat információk',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.getTextPrimaryColor(context),
-                            ),
-                          ),
-                          Text(
-                            departure.destinationDisplayName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.getTextSecondaryColor(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _trackVehicleOnMap(departure),
-                      icon: Icon(Symbols.map, color: color),
-                      style: IconButton.styleFrom(
-                        backgroundColor: color.withOpacity(0.1),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Részletes információk
-                _buildDetailSection('Érkezési információ', [
-                  _buildDetailItem('Pontos érkezés', departure.arrivalTime ?? 'Ismeretlen'),
-                  _buildDetailItem('Hátralévő idő', _formatArrivalTime(departure.arrivalMinutes, departure.arrivalSeconds)),
-                  _buildDetailItem('Státusz', departure.isAtStop ? 'Megállóban várakozik' : 'Úton van'),
-                ]),
-                
-                const SizedBox(height: 24),
-                
-                _buildDetailSection('Jármű adatok', [
-                  _buildDetailItem('Típus', departure.vehicleTypeText),
-                  _buildDetailItem('Akadálymentesség', departure.isLowFloor ? 'Akadálymentes jármű' : 'Akadálymentesség ismeretlen'),
-                  _buildDetailItem('Jármű ID', '#${departure.tripId}'),
-                ]),
-                
-                const SizedBox(height: 24),
-                
-                _buildDetailSection('Útvonal információ', [
-                  _buildDetailItem('Célállomás', departure.destinationDisplayName),
-                  _buildDetailItem('Útvonal ID', '#${departure.routeId}'),
-                  _buildDetailItem('Megálló ID', '#${departure.stopId}'),
-                ]),
-                
-                const SizedBox(height: 32),
-                
-                // Akciók
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _trackVehicleOnMap(departure),
-                        icon: Icon(Symbols.map),
-                        label: Text('Térkép'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: color,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Symbols.close),
-                        label: Text('Bezárás'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.getTextSecondaryColor(context).withOpacity(0.1),
-                          foregroundColor: AppColors.getTextPrimaryColor(context),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -357,9 +403,7 @@ class _StopSearchPageState extends State<StopSearchPage>
               color: AppColors.getTextSecondaryColor(context).withOpacity(0.2),
             ),
           ),
-          child: Column(
-            children: items,
-          ),
+          child: Column(children: items),
         ),
       ],
     );
@@ -1033,35 +1077,49 @@ class _StopSearchPageState extends State<StopSearchPage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    
+
                     const SizedBox(height: 4),
-                    
+
                     // Jármű típus és akadálymentesség
                     Row(
                       children: [
                         // Akadálymentesség státusz
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: departure.isLowFloor ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                            color:
+                                departure.isLowFloor
+                                    ? Colors.green.withOpacity(0.1)
+                                    : Colors.grey.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            departure.isLowFloor ? 'Akadálymentes' : 'Akadálymentesség ismeretlen',
+                            departure.isLowFloor
+                                ? 'Akadálymentes'
+                                : 'Akadálymentesség ismeretlen',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: departure.isLowFloor ? Colors.green : Colors.grey.shade600,
+                              color:
+                                  departure.isLowFloor
+                                      ? Colors.green
+                                      : Colors.grey.shade600,
                             ),
                           ),
                         ),
-                        
+
                         const SizedBox(width: 8),
-                        
+
                         // Státusz indikátor
                         if (departure.isAtStop)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
@@ -1099,14 +1157,17 @@ class _StopSearchPageState extends State<StopSearchPage>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    _formatArrivalTime(departure.arrivalMinutes, departure.arrivalSeconds),
+                    _formatArrivalTime(
+                      departure.arrivalMinutes,
+                      departure.arrivalSeconds,
+                    ),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: color,
                     ),
                   ),
-                  
+
                   if (departure.arrivalTime != null)
                     Text(
                       departure.arrivalTime!,
