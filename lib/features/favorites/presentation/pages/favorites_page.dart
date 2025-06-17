@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import '../../../../shared/widgets/navigation_widgets.dart';
 import '../../../../shared/widgets/shimmer_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
 
@@ -68,13 +67,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Kedvencek'),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.getBackgroundGradient(context),
-        ),
-        child: _isLoading ? _buildLoadingState() : _buildFavoritesContent(),
-      ),
+      backgroundColor: AppColors.getBackgroundColor(context),
+      body: _isLoading ? _buildLoadingState() : _buildFavoritesContent(),
     );
   }
 
@@ -129,17 +123,10 @@ class _FavoritesPageState extends State<FavoritesPage> {
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.getPrimaryColor(context).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Symbols.favorite,
-                color: AppColors.getPrimaryColor(context),
-                size: 24,
-              ),
+            Icon(
+              Symbols.favorite,
+              color: AppColors.getPrimaryColor(context),
+              size: 24,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -283,17 +270,10 @@ class _FavoritesPageState extends State<FavoritesPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.getPrimaryColor(context).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Symbols.favorite_border,
-                size: 64,
-                color: AppColors.getPrimaryColor(context),
-              ),
+            Icon(
+              Symbols.favorite_border,
+              size: 64,
+              color: AppColors.getPrimaryColor(context),
             ),
             const SizedBox(height: 24),
             const Text(

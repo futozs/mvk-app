@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import '../../../../shared/widgets/navigation_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 
@@ -11,112 +10,107 @@ class MorePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: 'További funkciók'),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.getBackgroundGradient(context),
-        ),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverToBoxAdapter(child: _buildHeader()),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildSection('Közlekedés', [
-                    _buildMenuItem(
-                      icon: Symbols.newspaper,
-                      title: 'Közlekedési hírek',
-                      subtitle: 'Aktuális forgalmi információk',
-                      onTap: () {
-                        // Hírek oldal
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Symbols.photo_library,
-                      title: 'Galéria',
-                      subtitle: 'Képek a járműparkról',
-                      onTap: () {
-                        // Galéria oldal
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Symbols.route,
-                      title: 'Összes útvonal',
-                      subtitle: 'Teljes hálózati térkép',
-                      onTap: () {
-                        // Útvonaltérkép
-                      },
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-                  _buildSection('Beállítások', [
-                    _buildMenuItem(
-                      icon: Symbols.settings,
-                      title: 'Beállítások',
-                      subtitle: 'Téma, értesítések és egyebek',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Symbols.notifications,
-                      title: 'Értesítések',
-                      subtitle: 'Értesítési beállítások',
-                      onTap: () {
-                        // Értesítések
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Symbols.language,
-                      title: 'Nyelv',
-                      subtitle: 'Magyar',
-                      onTap: () {
-                        // Nyelv beállítások
-                      },
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-                  _buildSection('Támogatás', [
-                    _buildMenuItem(
-                      icon: Symbols.help,
-                      title: 'Súgó',
-                      subtitle: 'Gyakran ismételt kérdések',
-                      onTap: () {
-                        // Súgó oldal
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Symbols.feedback,
-                      title: 'Visszajelzés',
-                      subtitle: 'Értékelje az alkalmazást',
-                      onTap: () {
-                        // Visszajelzés
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: Symbols.info,
-                      title: 'Az alkalmazásról',
-                      subtitle: 'Verzió és fejlesztő információk',
-                      onTap: () {
-                        // Névjegy
-                      },
-                    ),
-                  ]),
-                  const SizedBox(height: 100),
+      backgroundColor: AppColors.getBackgroundColor(context),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverToBoxAdapter(child: _buildHeader()),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildSection('Közlekedés', [
+                  _buildMenuItem(
+                    icon: Symbols.newspaper,
+                    title: 'Közlekedési hírek',
+                    subtitle: 'Aktuális forgalmi információk',
+                    onTap: () {
+                      // Hírek oldal
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Symbols.photo_library,
+                    title: 'Galéria',
+                    subtitle: 'Képek a járműparkról',
+                    onTap: () {
+                      // Galéria oldal
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Symbols.route,
+                    title: 'Összes útvonal',
+                    subtitle: 'Teljes hálózati térkép',
+                    onTap: () {
+                      // Útvonaltérkép
+                    },
+                  ),
                 ]),
-              ),
+                const SizedBox(height: 24),
+                _buildSection('Beállítások', [
+                  _buildMenuItem(
+                    icon: Symbols.settings,
+                    title: 'Beállítások',
+                    subtitle: 'Téma, értesítések és egyebek',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Symbols.notifications,
+                    title: 'Értesítések',
+                    subtitle: 'Értesítési beállítások',
+                    onTap: () {
+                      // Értesítések
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Symbols.language,
+                    title: 'Nyelv',
+                    subtitle: 'Magyar',
+                    onTap: () {
+                      // Nyelv beállítások
+                    },
+                  ),
+                ]),
+                const SizedBox(height: 24),
+                _buildSection('Támogatás', [
+                  _buildMenuItem(
+                    icon: Symbols.help,
+                    title: 'Súgó',
+                    subtitle: 'Gyakran ismételt kérdések',
+                    onTap: () {
+                      // Súgó oldal
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Symbols.feedback,
+                    title: 'Visszajelzés',
+                    subtitle: 'Értékelje az alkalmazást',
+                    onTap: () {
+                      // Visszajelzés
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Symbols.info,
+                    title: 'Az alkalmazásról',
+                    subtitle: 'Verzió és fejlesztő információk',
+                    onTap: () {
+                      // Névjegy
+                    },
+                  ),
+                ]),
+                const SizedBox(height: 100),
+              ]),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

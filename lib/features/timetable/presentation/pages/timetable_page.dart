@@ -106,23 +106,8 @@ class _TimetablePageState extends State<TimetablePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Menetrend',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.getCardColor(context),
-          ),
-        ),
-        backgroundColor: AppColors.getPrimaryColor(context),
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.getBackgroundGradient(context),
-        ),
-        child: _isLoading ? _buildLoadingState() : _buildTimetableContent(),
-      ),
+      backgroundColor: AppColors.getBackgroundColor(context),
+      body: _isLoading ? _buildLoadingState() : _buildTimetableContent(),
     );
   }
 
@@ -133,8 +118,9 @@ class _TimetablePageState extends State<TimetablePage> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: AppColors.getBackgroundGradient(context),
+            color: AppColors.getCardColor(context),
             borderRadius: BorderRadius.circular(20),
+            boxShadow: AppColors.getCardShadow(context),
           ),
           child: Column(
             children: [
@@ -252,34 +238,22 @@ class _TimetablePageState extends State<TimetablePage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.getPrimaryColor(
-                          context,
-                        ).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Symbols.directions_bus,
-                            color: AppColors.getPrimaryColor(context),
-                            size: 20,
+                    Row(
+                      children: [
+                        Icon(
+                          Symbols.directions_bus,
+                          color: AppColors.getPrimaryColor(context),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_filteredRoutes.length} járat elérhető',
+                          style: TextStyle(
+                            color: AppColors.getTextSecondaryColor(context),
+                            fontSize: 14,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_filteredRoutes.length} járat elérhető',
-                            style: TextStyle(
-                              color: AppColors.getTextSecondaryColor(context),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

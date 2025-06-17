@@ -100,7 +100,7 @@ class WeatherData {
 
 class WeatherService {
   static const String _apiKey =
-      '0bc4a010b711fdb90ad8f9278225da16'; // OpenWeatherMap API key
+      '0bc4a010b711fdb90ad8f9278225da16'; // OpenWeatherMap API key IGEN BENNE HAGYTAM
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
   // Miskolc koordinátái

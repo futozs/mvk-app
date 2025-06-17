@@ -445,7 +445,6 @@ class _StopSearchPageState extends State<StopSearchPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.getBackgroundColor(context),
-      extendBodyBehindAppBar: true,
       appBar: _buildModernAppBar(),
       body: _buildBody(),
     );
@@ -520,34 +519,31 @@ class _StopSearchPageState extends State<StopSearchPage>
   }
 
   Widget _buildBody() {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: _pageController,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(0, 50 * (1 - _pageController.value)),
-            child: Opacity(
-              opacity: _pageController.value,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    if (_showSearchView) ...[
-                      _buildSearchSection(),
-                      const SizedBox(height: 30),
-                      if (_isSearching) _buildLoadingSection(),
-                      if (_errorMessage != null) _buildErrorSection(),
-                    ] else if (_hasResults) ...[
-                      _buildResultsSection(),
-                    ],
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, 50 * (1 - _pageController.value)),
+          child: Opacity(
+            opacity: _pageController.value,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  if (_showSearchView) ...[
+                    _buildSearchSection(),
+                    const SizedBox(height: 30),
+                    if (_isSearching) _buildLoadingSection(),
+                    if (_errorMessage != null) _buildErrorSection(),
+                  ] else if (_hasResults) ...[
+                    _buildResultsSection(),
                   ],
-                ),
+                ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 

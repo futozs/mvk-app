@@ -152,9 +152,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   Widget _buildLoadingState() {
     return Container(
-      decoration: BoxDecoration(
-        gradient: AppColors.getBackgroundGradient(context),
-      ),
+      color: AppColors.getBackgroundColor(context),
       child: Center(
         child: CircularProgressIndicator(
           color: AppColors.getPrimaryColor(context),

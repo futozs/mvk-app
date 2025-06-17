@@ -6,6 +6,7 @@ import '../../features/timetable/presentation/pages/timetable_page.dart';
 import '../../features/stops/presentation/pages/map_page.dart';
 import '../../features/favorites/presentation/pages/favorites_page.dart';
 import '../../features/more/presentation/pages/more_page.dart';
+import '../../core/constants/app_colors.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -57,14 +58,23 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        children: _pages,
+      body: Column(
+        children: [
+          // MVK Header csík
+          _buildMVKHeader(context),
+          // Fő tartalom
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              children: _pages,
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: MainNavigationBar(
         currentIndex: _currentIndex,
@@ -148,6 +158,80 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               );
             },
           ),
+    );
+  }
+
+  Widget _buildMVKHeader(BuildContext context) {
+    return Container(
+      color: AppColors.getBackgroundColor(context),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.getPrimaryColor(context).withOpacity(0.15),
+                      AppColors.getPrimaryColor(context).withOpacity(0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.getPrimaryColor(
+                        context,
+                      ).withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/mlogobig.png',
+                    width: 26,
+                    height: 26,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                'MVK Miskolc',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.getPrimaryColor(context),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: Icon(
+                  Symbols.notifications,
+                  color: AppColors.getPrimaryColor(context),
+                ),
+                onPressed: () {
+                  // Értesítések megnyitása
+                },
+              ),
+              IconButton(
+                icon: Icon(
+                  Symbols.person,
+                  color: AppColors.getPrimaryColor(context),
+                ),
+                onPressed: () {
+                  // Profil megnyitása
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

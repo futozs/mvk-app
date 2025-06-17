@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
 import '../../../../shared/widgets/animated_cards.dart';
 import '../../../../shared/widgets/shimmer_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -20,7 +24,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _greetingController;
   late AnimationController _weatherController;
   late AnimationController _quickAccessController;
-  late AnimationController _servicesController;
   late AnimationController _masterController;
   late AnimationController _weatherParticleController;
 
@@ -28,13 +31,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   WeatherData? _currentWeather;
   final WeatherService _weatherService = WeatherService();
 
-  // Mock adatok
-  final List<String> _newsItems = [
-    '🚍 Új elektromos buszok érkeztek a 12-es járatra',
-    '⚠️ A Kálvária tér felújítása miatt módosított útvonal',
-    '🎉 Új mobilapp funkciók: valós idejű járatkövetés',
-    '📱 Töltsd le az új MVK alkalmazást még ma!',
-  ];
+  // Valós hírek adatai
+  List<Map<String, dynamic>> _newsItems = [];
+  bool _newsLoading = true;
+  String? _newsError;
 
   @override
   void initState() {
@@ -66,11 +66,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
     );
 
-    _servicesController = AnimationController(
-      duration: AppAnimations.extraSlow,
-      vsync: this,
-    );
-
     _initializeData();
   }
 
@@ -82,6 +77,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Alapértelmezett időjárás hiba esetén
       _currentWeather = null;
     }
+
+    // Hírek betöltése
+    await _loadNews();
 
     // Ultra smooth betöltés szekvencia
     await Future.delayed(const Duration(milliseconds: 1800));
@@ -110,9 +108,52 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       await Future.delayed(const Duration(milliseconds: 200));
       _quickAccessController.forward();
+    }
+  }
 
-      await Future.delayed(const Duration(milliseconds: 400));
-      _servicesController.forward();
+  Future<void> _loadNews() async {
+    try {
+      setState(() {
+        _newsLoading = true;
+        _newsError = null;
+      });
+
+      // Curl parancs HTTP POST-ként
+      final response = await http.post(
+        Uri.parse('https://mobilalkalmazas.mvkzrt.hu:8443/analyzer.php'),
+        headers: {
+          'User-Agent':
+              'Dalvik/2.1.0 (Linux; U; Android 15; SM-A566B Build/AP3A.240905.015.A2)',
+          'Host': 'mobilalkalmazas.mvkzrt.hu:8443',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'NI9rln8F=1&V=53&o5xfIG1p99=hu',
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['forgalmi_hirek'] != null) {
+          setState(() {
+            _newsItems = List<Map<String, dynamic>>.from(
+              jsonData['forgalmi_hirek'],
+            );
+            _newsLoading = false;
+          });
+        } else {
+          setState(() {
+            _newsItems = [];
+            _newsLoading = false;
+          });
+        }
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _newsError = 'Hiba a hírek betöltésekor: $e';
+        _newsLoading = false;
+        _newsItems = [];
+      });
     }
   }
 
@@ -123,7 +164,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _weatherController.dispose();
     _weatherParticleController.dispose();
     _quickAccessController.dispose();
-    _servicesController.dispose();
     super.dispose();
   }
 
@@ -240,14 +280,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.getBackgroundGradient(context),
-        ),
-        child: SafeArea(
-          child: _isLoading ? _buildLoadingState() : _buildMainContent(),
-        ),
-      ),
+      backgroundColor: AppColors.getBackgroundColor(context),
+      body: _isLoading ? _buildLoadingState() : _buildMainContent(),
     );
   }
 
@@ -255,10 +289,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return SingleChildScrollView(
       child: Column(
         children: [
-          const SizedBox(height: 80),
           // Greeting shimmer
           Container(
-            margin: const EdgeInsets.all(16),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: ShimmerWidgets.cardShimmer(height: 120),
           ),
           const SizedBox(height: 20),
@@ -306,26 +339,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       color: AppColors.getPrimaryColor(context),
       strokeWidth: 3,
       displacement: 40,
-      child: CustomScrollView(
+      child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        slivers: [
-          _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildGreetingSection(),
-                const SizedBox(height: 20),
-                _buildQuickAccessSection(),
-                const SizedBox(height: 20),
-                NewsTickerWidget(newsItems: _newsItems),
-                const SizedBox(height: 20),
-                _buildFeaturesSection(),
-                const SizedBox(height: 100), // Bottom navigation padding
-              ],
-            ),
-          ),
-        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildGreetingSection(),
+            const SizedBox(height: 20),
+            _buildQuickAccessSection(),
+            const SizedBox(height: 20),
+            _buildNewsSection(),
+            const SizedBox(height: 100), // Bottom navigation padding
+          ],
+        ),
       ),
     );
   }
@@ -338,6 +364,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Alapértelmezett időjárás hiba esetén
       _currentWeather = null;
     }
+
+    // Hírek frissítése
+    await _loadNews();
 
     // Smooth refresh animáció
     await Future.delayed(const Duration(milliseconds: 1500));
@@ -365,103 +394,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      expandedHeight: 0,
-      pinned: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.getBackgroundGradient(context),
-        ),
-      ),
-      title: AnimatedBuilder(
-        animation: _masterController,
-        builder: (context, child) {
-          return FadeTransition(
-            opacity: _masterController,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, -0.5),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(
-                  parent: _masterController,
-                  curve: AppAnimations.springCurve,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.getPrimaryColor(context).withOpacity(0.15),
-                          AppColors.getPrimaryColor(context).withOpacity(0.08),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.getPrimaryColor(
-                            context,
-                          ).withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        'assets/images/mlogobig.png',
-                        width: 26,
-                        height: 26,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Text(
-                    'MVK Miskolc',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.getPrimaryColor(context),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            Symbols.notifications,
-            color: AppColors.getPrimaryColor(context),
-          ),
-          onPressed: () {
-            // Értesítések megnyitása
-          },
-        ),
-        IconButton(
-          icon: Icon(Symbols.person, color: AppColors.getPrimaryColor(context)),
-          onPressed: () {
-            // Profil megnyitása
-          },
-        ),
-      ],
-    );
-  }
-
   Widget _buildGreetingSection() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Stack(
         children: [
           // Fő köszöntő kártya
@@ -965,157 +900,837 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFeaturesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.getPrimaryColor(context),
-                      AppColors.secondaryGreen,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(2),
+  Widget _buildNewsSection() {
+    if (_newsLoading) {
+      return Container(
+        height: 80,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.getPrimaryColor(context).withOpacity(0.1),
+              AppColors.getPrimaryColor(context).withOpacity(0.05),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.getPrimaryColor(context).withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Icon(
+                Symbols.newspaper,
+                color: AppColors.getPrimaryColor(context).withOpacity(0.5),
+                size: 24,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: AppColors.getPrimaryColor(
+                            context,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      )
+                      .animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(duration: 1000.ms, color: Colors.white54),
+                  const SizedBox(height: 8),
+                  Container(
+                        height: 12,
+                        width: 200,
+                        decoration: BoxDecoration(
+                          color: AppColors.getPrimaryColor(
+                            context,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      )
+                      .animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(
+                        duration: 1000.ms,
+                        color: Colors.white54,
+                        delay: 200.ms,
+                      ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_newsError != null) {
+      return Container(
+        height: 60,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFF5722), Color(0xFFFF7043)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF5722).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: const Icon(
+                Symbols.error_outline,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                _newsError!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: GestureDetector(
+                onTap: _loadNews,
+                child: const Icon(
+                  Symbols.refresh,
+                  color: Colors.white,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Szolgáltatások',
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_newsItems.isEmpty) {
+      return Container(
+        height: 60,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey.shade300, Colors.grey.shade200],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Icon(
+                Symbols.newspaper,
+                color: Colors.grey.shade600,
+                size: 24,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                'Jelenleg nincsenek elérhető hírek',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.getPrimaryColor(context),
-                  letterSpacing: 0.3,
+                  color: Colors.grey.shade700,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _NewsTickerWidget(newsItems: _newsItems);
+  }
+}
+
+class _NewsTickerWidget extends StatefulWidget {
+  final List<Map<String, dynamic>> newsItems;
+
+  const _NewsTickerWidget({required this.newsItems});
+
+  @override
+  State<_NewsTickerWidget> createState() => _NewsTickerWidgetState();
+}
+
+class _NewsTickerWidgetState extends State<_NewsTickerWidget>
+    with SingleTickerProviderStateMixin {
+  late PageController _pageController;
+  late AnimationController _animationController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 5),
+      vsync: this,
+    );
+
+    if (widget.newsItems.isNotEmpty) {
+      _startAutoScroll();
+    }
+  }
+
+  void _startAutoScroll() {
+    _animationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _nextPage();
+        _animationController.reset();
+        _animationController.forward();
+      }
+    });
+    _animationController.forward();
+  }
+
+  Future<Map<String, dynamic>?> _loadNewsDetails(String newsId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://mobilalkalmazas.mvkzrt.hu:8443/analyzer.php'),
+        headers: {
+          'User-Agent':
+              'Dalvik/2.1.0 (Linux; U; Android 15; SM-A566B Build/AP3A.240905.015.A2)',
+          'Host': 'mobilalkalmazas.mvkzrt.hu:8443',
+          'Accept-Encoding': 'gzip',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'K3WQtr=$newsId&NI9rln8F=1&V=53&o5xfIG1p99=hu',
+      );
+
+      if (response.statusCode == 200) {
+        final decodedResponse = utf8.decode(response.bodyBytes);
+        final jsonData = json.decode(decodedResponse);
+
+        // A válasz `forgalmi_hirek` tömbből keressük az adott ID-t
+        if (jsonData['forgalmi_hirek'] != null &&
+            jsonData['forgalmi_hirek'].isNotEmpty) {
+          // Általában egy elemű tömb jön vissza a konkrét ID-vel
+          return jsonData['forgalmi_hirek'][0];
+        }
+        return jsonData;
+      } else {
+        print('HTTP Error: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error loading news details: $e');
+      return null;
+    }
+  }
+
+  void _nextPage() {
+    if (widget.newsItems.isEmpty) return;
+
+    _currentIndex = (_currentIndex + 1) % widget.newsItems.length;
+    _pageController.animateToPage(
+      _currentIndex,
+      duration: AppAnimations.normal,
+      curve: AppAnimations.defaultCurve,
+    );
+  }
+
+  void _showNewsDetail(Map<String, dynamic> newsItem) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder:
+          (context) => _NewsDetailModal(
+            newsItem: newsItem,
+            loadNewsDetails: _loadNewsDetails,
+          ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.newsItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+          height: 80,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.getPrimaryColor(context),
+                AppColors.getPrimaryColor(context).withOpacity(0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.getPrimaryColor(context).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              children: [
+                // Háttér dekoráció
+                Positioned(
+                  top: -20,
+                  right: -20,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.1),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Fő tartalom
+                Row(
+                  children: [
+                    // Ikon
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: const Icon(
+                        Symbols.campaign,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    // Hírek
+                    Expanded(
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: widget.newsItems.length,
+                        itemBuilder: (context, index) {
+                          final newsItem = widget.newsItems[index];
+                          return GestureDetector(
+                            onTap: () => _showNewsDetail(newsItem),
+                            child: Container(
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(right: 16),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    newsItem['cim'] ?? 'Hír',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // Progress indikátor
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: AnimatedBuilder(
+                              animation: _animationController,
+                              builder: (context, child) {
+                                return CircularProgressIndicator(
+                                  value: _animationController.value,
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                  backgroundColor: Colors.white.withOpacity(
+                                    0.3,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Text(
+                            '${_currentIndex + 1}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        )
+        .animate()
+        .fadeIn(duration: AppAnimations.slow)
+        .slideY(
+          begin: 0.3,
+          duration: AppAnimations.slow,
+          curve: Curves.easeOutCubic,
+        );
+  }
+}
+
+class _NewsDetailModal extends StatefulWidget {
+  final Map<String, dynamic> newsItem;
+  final Future<Map<String, dynamic>?> Function(String) loadNewsDetails;
+
+  const _NewsDetailModal({
+    required this.newsItem,
+    required this.loadNewsDetails,
+  });
+
+  @override
+  State<_NewsDetailModal> createState() => _NewsDetailModalState();
+}
+
+class _NewsDetailModalState extends State<_NewsDetailModal> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _detailData;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDetails();
+  }
+
+  Future<void> _loadDetails() async {
+    try {
+      final newsId = widget.newsItem['id_forgalmi_hir']?.toString() ?? '';
+      if (newsId.isNotEmpty) {
+        final details = await widget.loadNewsDetails(newsId);
+        if (mounted) {
+          setState(() {
+            _detailData = details;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _error = 'Hír azonosító hiányzik';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Hiba történt a részletek betöltésekor';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _stripHtmlTags(String htmlText) {
+    // Egyszerű HTML tag eltávolítás
+    return htmlText
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&uuml;', 'ü')
+        .replaceAll('&ouml;', 'ö')
+        .replaceAll('&aacute;', 'á')
+        .replaceAll('&eacute;', 'é')
+        .replaceAll('&iacute;', 'í')
+        .replaceAll('&oacute;', 'ó')
+        .replaceAll('&uacute;', 'ú')
+        .replaceAll('&Uuml;', 'Ü')
+        .replaceAll('&Ouml;', 'Ö')
+        .replaceAll('&Aacute;', 'Á')
+        .replaceAll('&Eacute;', 'É')
+        .replaceAll('&Iacute;', 'Í')
+        .replaceAll('&Oacute;', 'Ó')
+        .replaceAll('&Uacute;', 'Ú')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .trim();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.getPrimaryColor(context),
+                  AppColors.getPrimaryColor(context).withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Symbols.close,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Flexible(
+            child:
+                _isLoading
+                    ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Részletek betöltése...'),
+                          ],
+                        ),
+                      ),
+                    )
+                    : _error != null
+                    ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Symbols.error,
+                              size: 48,
+                              color: Colors.red[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _error!,
+                              style: TextStyle(
+                                color: Colors.red[600],
+                                fontSize: 16,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    : SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 24),
+                          // Title
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.getPrimaryColor(
+                                    context,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Symbols.newspaper,
+                                  color: AppColors.getPrimaryColor(context),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  _detailData?['cim'] ??
+                                      widget.newsItem['cim'] ??
+                                      'Hír',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Metadata (without category display)
+                          if (_detailData?['modositas_idopontja'] != null ||
+                              widget.newsItem['modositas_idopontja'] != null)
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Symbols.schedule,
+                                    size: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _detailData?['modositas_idopontja'] ??
+                                        widget
+                                            .newsItem['modositas_idopontja'] ??
+                                        '',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 24),
+                          // Content with clickable links
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey[200]!),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Symbols.article,
+                                      color: AppColors.getPrimaryColor(context),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Részletek',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.getPrimaryColor(
+                                          context,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                _ClickableText(
+                                  text:
+                                      _detailData?['hosszu_tartalom'] != null
+                                          ? _stripHtmlTags(
+                                            _detailData!['hosszu_tartalom'],
+                                          )
+                                          : _detailData?['rovid_tartalom'] ??
+                                              widget
+                                                  .newsItem['rovid_tartalom'] ??
+                                              widget.newsItem['cim'] ??
+                                              'Nincs tartalom',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.copyWith(
+                                    height: 1.6,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          // Actions
+                          ElevatedButton.icon(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Symbols.check),
+                            label: const Text('Rendben'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.getPrimaryColor(
+                                context,
+                              ),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              minimumSize: const Size(double.infinity, 50),
+                              elevation: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClickableText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+
+  const _ClickableText({required this.text, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<TextSpan> spans = [];
+    final urlPattern = RegExp(r'https?://[^\s]+');
+    final matches = urlPattern.allMatches(text);
+
+    int lastMatchEnd = 0;
+
+    for (final match in matches) {
+      // Szöveg az URL előtt
+      if (match.start > lastMatchEnd) {
+        spans.add(
+          TextSpan(
+            text: text.substring(lastMatchEnd, match.start),
+            style: style,
+          ),
+        );
+      }
+
+      // URL link
+      final url = text.substring(match.start, match.end);
+      spans.add(
+        TextSpan(
+          text: url,
+          style:
+              style?.copyWith(
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+              ) ??
+              const TextStyle(
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+              ),
+          recognizer:
+              TapGestureRecognizer()
+                ..onTap = () async {
+                  final uri = Uri.parse(url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
         ),
-        const SizedBox(height: 20),
-        AnimatedFeatureCard(
-              title: 'Menetrend',
-              subtitle: 'Járatok és érkezési idők',
-              icon: Symbols.schedule,
-              onTap: () {
-                // Menetrend megnyitása
-              },
-              animationDelay: 100,
-            )
-            .animate()
-            .slideX(
-              begin: -1.2,
-              delay: const Duration(milliseconds: 150),
-              duration: AppAnimations.slow,
-              curve: AppAnimations.ultraSmoothCurve,
-            )
-            .then()
-            .shimmer(
-              duration: const Duration(milliseconds: 1800),
-              delay: const Duration(milliseconds: 100),
-            ),
-        AnimatedFeatureCard(
-              title: 'Térkép',
-              subtitle: 'Járatok valós idejű követése',
-              icon: Symbols.map,
-              onTap: () {
-                // Térkép megnyitása
-              },
-              animationDelay: 200,
-              backgroundColor: const Color.fromARGB(255, 56, 67, 189),
-              iconColor: const Color.fromARGB(255, 56, 67, 189),
-            )
-            .animate()
-            .slideX(
-              begin: 1.2,
-              delay: const Duration(milliseconds: 250),
-              duration: AppAnimations.slow,
-              curve: AppAnimations.ultraSmoothCurve,
-            )
-            .then()
-            .shimmer(
-              duration: const Duration(milliseconds: 1800),
-              delay: const Duration(milliseconds: 200),
-            ),
-        AnimatedFeatureCard(
-              title: 'Kedvencek',
-              subtitle: 'Mentett megállók és útvonalak',
-              icon: Symbols.favorite,
-              onTap: () {
-                // Kedvencek megnyitása
-              },
-              animationDelay: 300,
-              backgroundColor: const Color(0xFFE91E63),
-              iconColor: const Color(0xFFE91E63),
-            )
-            .animate()
-            .slideX(
-              begin: -1.2,
-              delay: const Duration(milliseconds: 350),
-              duration: AppAnimations.slow,
-              curve: AppAnimations.ultraSmoothCurve,
-            )
-            .then()
-            .shimmer(
-              duration: const Duration(milliseconds: 1800),
-              delay: const Duration(milliseconds: 300),
-            ),
-        AnimatedFeatureCard(
-              title: 'Forgalmi hírek',
-              subtitle: 'Aktuális közlekedési információk',
-              icon: Symbols.campaign,
-              onTap: () {
-                // Hírek megnyitása
-              },
-              animationDelay: 400,
-              backgroundColor: const Color(0xFFFF9800),
-              iconColor: const Color(0xFFFF9800),
-            )
-            .animate()
-            .slideX(
-              begin: 1.2,
-              delay: const Duration(milliseconds: 450),
-              duration: AppAnimations.slow,
-              curve: AppAnimations.ultraSmoothCurve,
-            )
-            .then()
-            .shimmer(
-              duration: const Duration(milliseconds: 1800),
-              delay: const Duration(milliseconds: 400),
-            ),
-        AnimatedFeatureCard(
-              title: 'Busz galéria',
-              subtitle: 'Járművek képei és információi',
-              icon: Symbols.photo_library,
-              onTap: () {
-                // Galéria megnyitása
-              },
-              animationDelay: 500,
-              backgroundColor: const Color(0xFF9C27B0),
-              iconColor: const Color(0xFF9C27B0),
-            )
-            .animate()
-            .slideX(
-              begin: -1.2,
-              delay: const Duration(milliseconds: 550),
-              duration: AppAnimations.slow,
-              curve: AppAnimations.ultraSmoothCurve,
-            )
-            .then()
-            .shimmer(
-              duration: const Duration(milliseconds: 1800),
-              delay: const Duration(milliseconds: 500),
-            ),
-      ],
+      );
+
+      lastMatchEnd = match.end;
+    }
+
+    // Maradék szöveg az utolsó URL után
+    if (lastMatchEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastMatchEnd), style: style));
+    }
+
+    return RichText(
+      text: TextSpan(
+        children: spans.isEmpty ? [TextSpan(text: text, style: style)] : spans,
+      ),
     );
   }
 }
