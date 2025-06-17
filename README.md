@@ -47,6 +47,7 @@ flutter run --debug
 
 # APK build
 flutter build apk
+flutter build apk --no-tree-shake-icons
 ```
 
 ## Licensz
