@@ -9,6 +9,12 @@ import 'shared/widgets/main_navigation_wrapper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Orientáció rögzítése - csak portré mód
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   // Theme service inicializálása
   final themeService = ThemeService();
   await themeService.initTheme();
