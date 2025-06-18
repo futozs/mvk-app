@@ -19,33 +19,46 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
+  // Oldalak cache-elése - egyszer létrehozzuk és újrahasználjuk
+  late final List<Widget> _cachedPages;
+
+  @override
+  void initState() {
+    super.initState();
+    // Oldalak előre betöltése és cache-elése
+    _cachedPages = [
+      const HomePage(),
+      const TimetablePage(),
+      MapPage(onNavigateToHome: _navigateToHome),
+      const FavoritesPage(),
+      const MorePage(),
+    ];
+  }
+
   void _navigateToHome() {
     setState(() {
       _currentIndex = 0;
     });
     _pageController.animateToPage(
       0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOutCubic,
+      duration: const Duration(milliseconds: 200), // Gyors animáció
+      curve: Curves.easeOut,
     );
   }
 
-  List<Widget> get _pages => [
-    const HomePage(),
-    const TimetablePage(),
-    MapPage(onNavigateToHome: _navigateToHome),
-    const FavoritesPage(),
-    const MorePage(),
-  ];
+  List<Widget> get _pages => _cachedPages;
 
   void _onTabTapped(int index) {
+    if (_currentIndex == index)
+      return; // Ha ugyanaz a tab, ne csináljunk semmit
+
     setState(() {
       _currentIndex = index;
     });
     _pageController.animateToPage(
       index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOutCubic,
+      duration: const Duration(milliseconds: 200), // Gyors és smooth animáció
+      curve: Curves.easeOut,
     );
   }
 
@@ -62,7 +75,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         children: [
           // MVK Header csík
           _buildMVKHeader(context),
-          // Fő tartalom
+          // Fő tartalom - Optimalizált PageView a swipe funkcionalitással
           Expanded(
             child: PageView(
               controller: _pageController,
@@ -71,7 +84,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                   _currentIndex = index;
                 });
               },
-              children: _pages,
+              // Performance optimalizációk
+              physics: const ClampingScrollPhysics(), // Smooth scrolling
+              children:
+                  _pages.map((page) => _KeepAliveWrapper(child: page)).toList(),
             ),
           ),
         ],
@@ -233,5 +249,27 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         ),
       ),
     );
+  }
+}
+
+// Wrapper widget az oldalak állapotának megőrzéséhez
+class _KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAliveWrapper({required this.child});
+
+  @override
+  State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Fontos az AutomaticKeepAliveClientMixin miatt
+    return widget.child;
   }
 }

@@ -15,6 +15,11 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // Performance optimalizációk
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+  );
+
   // Theme service inicializálása
   final themeService = ThemeService();
   await themeService.initTheme();
@@ -33,21 +38,6 @@ class MVKApp extends StatelessWidget {
       value: themeService,
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
-          // Dinamikus rendszer UI beállítások
-          SystemChrome.setSystemUIOverlayStyle(
-            SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness:
-                  themeService.isDarkMode ? Brightness.light : Brightness.dark,
-              systemNavigationBarColor:
-                  themeService.isDarkMode
-                      ? const Color(0xFF121212)
-                      : Colors.white,
-              systemNavigationBarIconBrightness:
-                  themeService.isDarkMode ? Brightness.light : Brightness.dark,
-            ),
-          );
-
           return MaterialApp(
             title: 'MVK Miskolc',
             debugShowCheckedModeBanner: false,
@@ -55,6 +45,16 @@ class MVKApp extends StatelessWidget {
             darkTheme: AppThemes.darkTheme,
             themeMode: themeService.themeMode,
             home: const SplashScreen(),
+            // Performance optimalizációk
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler:
+                      TextScaler.noScaling, // Szöveg méretezés kikapcsolása
+                ),
+                child: child!,
+              );
+            },
             routes: {
               '/home': (context) => const MainNavigationWrapper(),
               '/splash': (context) => const SplashScreen(),

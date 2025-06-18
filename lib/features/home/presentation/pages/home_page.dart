@@ -21,48 +21,28 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  late AnimationController _greetingController;
-  late AnimationController _weatherController;
-  late AnimationController _quickAccessController;
   late AnimationController _masterController;
-  late AnimationController _weatherParticleController;
 
   bool _isLoading = true;
   WeatherData? _currentWeather;
   final WeatherService _weatherService = WeatherService();
 
-  // Valós hírek adatai
+  // Valós hírek adatai - cache mechanizmussal
   List<Map<String, dynamic>> _newsItems = [];
   bool _newsLoading = true;
   String? _newsError;
+  DateTime? _lastNewsUpdate;
+
+  // Cache időtartama (5 perc)
+  static const Duration _newsCacheDuration = Duration(minutes: 5);
 
   @override
   void initState() {
     super.initState();
 
-    // Ultra smooth animáció kontrollerek
+    // Egyszerűsített animáció kontroller
     _masterController = AnimationController(
-      duration: AppAnimations.cinematic,
-      vsync: this,
-    );
-
-    _greetingController = AnimationController(
-      duration: AppAnimations.extraSlow,
-      vsync: this,
-    );
-
-    _weatherController = AnimationController(
-      duration: AppAnimations.slow,
-      vsync: this,
-    );
-
-    _weatherParticleController = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    );
-
-    _quickAccessController = AnimationController(
-      duration: AppAnimations.slow,
+      duration: const Duration(milliseconds: 800), // Gyorsabb betöltés
       vsync: this,
     );
 
@@ -81,37 +61,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Hírek betöltése
     await _loadNews();
 
-    // Ultra smooth betöltés szekvencia
-    await Future.delayed(const Duration(milliseconds: 1800));
+    // Gyorsabb betöltés - rövidebb várakozás
+    await Future.delayed(const Duration(milliseconds: 500));
 
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
 
-      // Mesterkélt animáció orchestration
+      // Egyszerűsített animáció
       _masterController.forward();
-
-      await Future.delayed(const Duration(milliseconds: 200));
-      _greetingController.forward();
-
-      await Future.delayed(const Duration(milliseconds: 300));
-      _weatherController.forward();
-
-      // Időjárás-függő részecske animáció indítása
-      if (_currentWeather?.condition == WeatherCondition.rainy ||
-          _currentWeather?.condition == WeatherCondition.snowy) {
-        _weatherParticleController.repeat();
-      } else {
-        _weatherParticleController.forward();
-      }
-
-      await Future.delayed(const Duration(milliseconds: 200));
-      _quickAccessController.forward();
     }
   }
 
   Future<void> _loadNews() async {
+    // Cache ellenőrzése
+    if (_lastNewsUpdate != null &&
+        DateTime.now().difference(_lastNewsUpdate!) < _newsCacheDuration &&
+        _newsItems.isNotEmpty) {
+      // Cached adatok használata
+      return;
+    }
+
     try {
       setState(() {
         _newsLoading = true;
@@ -138,11 +109,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               jsonData['forgalmi_hirek'],
             );
             _newsLoading = false;
+            _lastNewsUpdate = DateTime.now(); // Cache időpont frissítése
           });
         } else {
           setState(() {
             _newsItems = [];
             _newsLoading = false;
+            _lastNewsUpdate = DateTime.now();
           });
         }
       } else {
@@ -160,10 +133,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _masterController.dispose();
-    _greetingController.dispose();
-    _weatherController.dispose();
-    _weatherParticleController.dispose();
-    _quickAccessController.dispose();
     super.dispose();
   }
 
@@ -374,23 +343,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (mounted) {
       setState(() {});
 
-      // Újra indítjuk az animációkat
-      _greetingController.reset();
-      _weatherController.reset();
-      _weatherParticleController.reset();
-
-      await Future.delayed(const Duration(milliseconds: 200));
-      _greetingController.forward();
-      await Future.delayed(const Duration(milliseconds: 300));
-      _weatherController.forward();
-
-      // Időjárás-függő részecske animáció
-      if (_currentWeather?.condition == WeatherCondition.rainy ||
-          _currentWeather?.condition == WeatherCondition.snowy) {
-        _weatherParticleController.repeat();
-      } else {
-        _weatherParticleController.forward();
-      }
+      // Egyszerűsített animáció újraindítás
+      _masterController.reset();
+      await Future.delayed(const Duration(milliseconds: 100));
+      _masterController.forward();
     }
   }
 
@@ -452,18 +408,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AnimatedBuilder(
-                            animation: _greetingController,
+                            animation: _masterController,
                             builder: (context, child) {
                               return FadeTransition(
-                                opacity: _greetingController,
+                                opacity: _masterController,
                                 child: SlideTransition(
                                   position: Tween<Offset>(
                                     begin: const Offset(-0.8, 0),
                                     end: Offset.zero,
                                   ).animate(
                                     CurvedAnimation(
-                                      parent: _greetingController,
-                                      curve: AppAnimations.ultraSmoothCurve,
+                                      parent: _masterController,
+                                      curve: Curves.easeOut,
                                     ),
                                   ),
                                   child: Text(
@@ -545,12 +501,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildWeatherWidget() {
     return AnimatedBuilder(
-      animation: _weatherController,
+      animation: _masterController,
       builder: (context, child) {
         return Transform.scale(
-          scale: Curves.easeOutBack.transform(_weatherController.value),
+          scale: Curves.easeOut.transform(_masterController.value),
           child: Transform.rotate(
-            angle: (1 - _weatherController.value) * 0.5,
+            angle: (1 - _masterController.value) * 0.3,
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -619,15 +575,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Positioned.fill(
       child: IgnorePointer(
         child: AnimatedBuilder(
-          animation: _weatherParticleController,
+          animation: _masterController,
           builder: (context, child) {
             return Stack(
               children: List.generate(
-                isRaining || isSnowing ? 12 : 6, // Több részecske esőnél/hónál
+                isRaining || isSnowing
+                    ? 8
+                    : 4, // Kevesebb részecske a jobb performance miatt
                 (index) {
-                  final delay = index * (isRaining ? 0.1 : 0.2);
-                  final animationValue = (_weatherParticleController.value -
-                          delay)
+                  final delay = index * 0.15;
+                  final animationValue = (_masterController.value - delay)
                       .clamp(0.0, 1.0);
 
                   // Eső esetén vertikális mozgás
@@ -706,19 +663,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildQuickAccessSection() {
     return AnimatedBuilder(
-      animation: _quickAccessController,
+      animation: _masterController,
       builder: (context, child) {
         return FadeTransition(
-          opacity: _quickAccessController,
+          opacity: _masterController,
           child: SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(0, 0.3),
               end: Offset.zero,
             ).animate(
-              CurvedAnimation(
-                parent: _quickAccessController,
-                curve: AppAnimations.springCurve,
-              ),
+              CurvedAnimation(parent: _masterController, curve: Curves.easeOut),
             ),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
