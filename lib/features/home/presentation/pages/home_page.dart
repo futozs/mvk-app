@@ -1406,9 +1406,9 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: AppColors.getCardColor(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1462,15 +1462,22 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
           Flexible(
             child:
                 _isLoading
-                    ? const Center(
+                    ? Center(
                       child: Padding(
-                        padding: EdgeInsets.all(40),
+                        padding: const EdgeInsets.all(40),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Részletek betöltése...'),
+                            CircularProgressIndicator(
+                              color: AppColors.getPrimaryColor(context),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Részletek betöltése...',
+                              style: TextStyle(
+                                color: AppColors.getTextSecondaryColor(context),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1535,7 +1542,9 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
                                     context,
                                   ).textTheme.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
+                                    color: AppColors.getTextPrimaryColor(
+                                      context,
+                                    ),
                                     height: 1.3,
                                   ),
                                 ),
@@ -1549,16 +1558,22 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.grey[50],
+                                color: AppColors.getCardColor(context),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[200]!),
+                                border: Border.all(
+                                  color: AppColors.getTextSecondaryColor(
+                                    context,
+                                  ).withOpacity(0.3),
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
                                     Symbols.schedule,
                                     size: 16,
-                                    color: Colors.grey[600],
+                                    color: AppColors.getTextSecondaryColor(
+                                      context,
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -1567,7 +1582,9 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
                                             .newsItem['modositas_idopontja'] ??
                                         '',
                                     style: TextStyle(
-                                      color: Colors.grey[600],
+                                      color: AppColors.getTextSecondaryColor(
+                                        context,
+                                      ),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -1580,16 +1597,14 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.getCardColor(context),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey[200]!),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                              border: Border.all(
+                                color: AppColors.getTextSecondaryColor(
+                                  context,
+                                ).withOpacity(0.3),
+                              ),
+                              boxShadow: AppColors.getCardShadow(context),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1631,7 +1646,9 @@ class _NewsDetailModalState extends State<_NewsDetailModal> {
                                     context,
                                   ).textTheme.bodyLarge?.copyWith(
                                     height: 1.6,
-                                    color: Colors.grey[700],
+                                    color: AppColors.getTextSecondaryColor(
+                                      context,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1675,8 +1692,87 @@ class _ClickableText extends StatelessWidget {
 
   const _ClickableText({required this.text, this.style});
 
-  @override
-  Widget build(BuildContext context) {
+  Future<void> _launchUrlSafely(String url, BuildContext context) async {
+    try {
+      // URL tisztítása és validálása
+      String cleanUrl = url.trim();
+
+      // Ha nem kezdődik http-vel, hozzáadjuk
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://$cleanUrl';
+      }
+
+      final uri = Uri.parse(cleanUrl);
+
+      print('Megpróbáljuk megnyitni: $cleanUrl');
+
+      // 1. Próbálkozás: External alkalmazás
+      try {
+        final canLaunch = await canLaunchUrl(uri);
+        print('canLaunchUrl eredmény: $canLaunch');
+
+        if (canLaunch) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          print('Sikeresen megnyitva external alkalmazásban');
+          return;
+        }
+      } catch (e) {
+        print('External alkalmazás hiba: $e');
+      }
+
+      // 2. Próbálkozás: Platform default
+      try {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+        print('Sikeresen megnyitva platform default módban');
+        return;
+      } catch (e) {
+        print('Platform default hiba: $e');
+      }
+
+      // 3. Próbálkozás: In-app web view
+      try {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+          webViewConfiguration: const WebViewConfiguration(
+            enableJavaScript: true,
+            enableDomStorage: true,
+          ),
+        );
+        print('Sikeresen megnyitva in-app web view-ban');
+        return;
+      } catch (e) {
+        print('In-app web view hiba: $e');
+      }
+
+      // Ha minden sikertelen, hibaüzenet
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Nem sikerült megnyitni a linket: $cleanUrl'),
+            backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: 'OK',
+              onPressed: () {},
+              textColor: Colors.white,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('URL parsing hiba: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Érvénytelen link formátum: $url'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  List<TextSpan> _buildTextSpans(BuildContext context) {
     final List<TextSpan> spans = [];
     final urlPattern = RegExp(r'https?://[^\s]+');
     final matches = urlPattern.allMatches(text);
@@ -1701,21 +1797,16 @@ class _ClickableText extends StatelessWidget {
           text: url,
           style:
               style?.copyWith(
-                color: Colors.blue,
+                color: AppColors.getPrimaryColor(context),
                 decoration: TextDecoration.underline,
               ) ??
-              const TextStyle(
-                color: Colors.blue,
+              TextStyle(
+                color: AppColors.getPrimaryColor(context),
                 decoration: TextDecoration.underline,
               ),
           recognizer:
               TapGestureRecognizer()
-                ..onTap = () async {
-                  final uri = Uri.parse(url);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
+                ..onTap = () => _launchUrlSafely(url, context),
         ),
       );
 
@@ -1726,6 +1817,13 @@ class _ClickableText extends StatelessWidget {
     if (lastMatchEnd < text.length) {
       spans.add(TextSpan(text: text.substring(lastMatchEnd), style: style));
     }
+
+    return spans;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spans = _buildTextSpans(context);
 
     return RichText(
       text: TextSpan(
