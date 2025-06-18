@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/app_cache_service.dart';
+import '../../../../core/services/app_state_manager.dart';
+import '../../../../shared/widgets/main_navigation_wrapper.dart';
 import 'dart:math' as math;
 
 // Floating particle data class
@@ -35,27 +39,41 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _textController;
   late AnimationController _backgroundController;
   late AnimationController _particlesController;
+  late AnimationController _progressController;
 
   // Floating particles list
   List<FloatingParticle> _particles = [];
   final int _particleCount = 25;
 
+  // Cache loading state
+  final AppCacheService _cacheService = AppCacheService();
+  late final AppStateManager _appStateManager;
+  double _loadingProgress = 0.0;
+  String _loadingMessage = 'Inizializálás...';
+  bool _isFirstRun = false;
+
+  // Prerendering
+  Widget? _prerenderedMainApp;
+
   @override
   void initState() {
     super.initState();
 
+    // App State Manager inicializálása
+    _appStateManager = context.read<AppStateManager>();
+
     _backgroundController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
     _logoController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
     _textController = AnimationController(
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
@@ -64,8 +82,13 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
+    _progressController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
     _initializeParticles();
-    _startAnimationSequence();
+    _startLoadingSequence();
   }
 
   void _initializeParticles() {
@@ -88,21 +111,190 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
-  void _startAnimationSequence() async {
-    // Ultra smooth animáció szekvencia
+  void _startLoadingSequence() async {
+    // Gyors UI animációk indítása
     _backgroundController.forward();
+    _particlesController.repeat();
 
-    // Logo animáció gyönyörű easing-gel
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 300));
     _logoController.forward();
 
-    // Szöveg animáció elegáns késleltetéssel
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 200));
     _textController.forward();
 
-    // Navigáció szuper smooth átmenettel
-    await Future.delayed(const Duration(milliseconds: 3500));
+    // Cache állapot ellenőrzése
+    await _checkCacheStatus();
+
+    // Cache betöltési folyamat
+    await _performCacheLoading();
+
+    // Navigáció a főoldalra
+    await _navigateToHome();
+  }
+
+  Future<void> _checkCacheStatus() async {
+    setState(() {
+      _loadingMessage = 'Alkalmazás állapotának ellenőrzése...';
+      _loadingProgress = 0.1;
+    });
+
+    // Cache service inicializálása
+    await _cacheService.initialize();
+
+    // Ellenőrizzük hogy ez első indítás-e
+    _isFirstRun = !_cacheService.isPreloadCompleted;
+
+    setState(() {
+      _loadingProgress = 0.2;
+    });
+
+    if (_isFirstRun) {
+      setState(() {
+        _loadingMessage = 'Első indítás - ez lassabb lehet...';
+      });
+      await Future.delayed(const Duration(milliseconds: 1000));
+    }
+  }
+
+  Future<void> _performCacheLoading() async {
+    if (_isFirstRun) {
+      // Első indítás - teljes betöltés lépésekkel
+      await _performFirstRunLoading();
+    } else {
+      // Ismételt indítás - gyors ellenőrzés
+      await _performQuickLoading();
+    }
+  }
+
+  Future<void> _performFirstRunLoading() async {
+    // 1. Hírek betöltése
+    setState(() {
+      _loadingMessage = 'Hírek betöltése...';
+      _loadingProgress = 0.3;
+    });
+    await _cacheService.getNews(); // Valódi hírek betöltése
+
+    // 2. Időjárás betöltése
+    setState(() {
+      _loadingMessage = 'Időjárás adatok betöltése...';
+      _loadingProgress = 0.5;
+    });
+    await _cacheService.getWeather(); // Valódi időjárás betöltése
+
+    // 3. Főoldalak előre renderelése
+    setState(() {
+      _loadingMessage = 'Oldalak előkészítése...';
+      _loadingProgress = 0.7;
+    });
+    await _prerenderMainApp();
+
+    // 4. Képek és beállítások
+    setState(() {
+      _loadingMessage = 'Képek és beállítások előkészítése...';
+      _loadingProgress = 0.85;
+    });
+    await Future.delayed(
+      const Duration(milliseconds: 300),
+    ); // Egyéb előkészítések
+
+    // 5. Befejezés
+    setState(() {
+      _loadingMessage = 'Alkalmazás előkészítése...';
+      _loadingProgress = 1.0;
+    });
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  /// Főoldalak előre renderelése a swipe lag elkerülésére
+  Future<void> _prerenderMainApp() async {
+    try {
+      debugPrint('🚀 SplashScreen: Főoldalak előre renderelése kezdődik...');
+
+      // Invisible widget tree létrehozása a főoldalakkal
+      _prerenderedMainApp = Offstage(
+        offstage: true,
+        child: const MainNavigationWrapper(),
+      );
+
+      // Force build a widget tree
+      if (mounted) {
+        setState(() {
+          // Widget tree frissítése
+        });
+
+        // Kis várakozás a render process-hez
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Precache images, widgets, stb.
+        await _precacheResources();
+
+        debugPrint('✅ SplashScreen: Főoldalak előre renderelése kész!');
+      }
+    } catch (e) {
+      debugPrint('❌ SplashScreen: Prerender hiba: $e');
+      // Fallback - ha a prerender nem sikerül, folytatjuk
+    }
+  }
+
+  /// Képek és egyéb erőforrások előre cache-elése
+  Future<void> _precacheResources() async {
+    try {
+      // Főbb képek előre betöltése
+      final imagesToCache = [
+        'assets/images/mlogo.png',
+        'assets/images/mlogobig.png',
+        // További képek itt...
+      ];
+
+      for (final imagePath in imagesToCache) {
+        if (mounted) {
+          try {
+            await precacheImage(AssetImage(imagePath), context);
+          } catch (e) {
+            debugPrint('⚠️ Kép cache hiba ($imagePath): $e');
+          }
+        }
+      }
+
+      debugPrint('🖼️ SplashScreen: Képek cache-elése kész');
+    } catch (e) {
+      debugPrint('❌ SplashScreen: Precache hiba: $e');
+    }
+  }
+
+  Future<void> _performQuickLoading() async {
+    // Gyors betöltés korábbi felhasználóknak
+    setState(() {
+      _loadingMessage = 'Cache ellenőrzése...';
+      _loadingProgress = 0.4;
+    });
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    setState(() {
+      _loadingMessage = 'Adatok frissítése...';
+      _loadingProgress = 0.8;
+    });
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    setState(() {
+      _loadingMessage = 'Alkalmazás indítása...';
+      _loadingProgress = 1.0;
+    });
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+
+  Future<void> _navigateToHome() async {
+    setState(() {
+      _loadingMessage = 'Kész!';
+    });
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
     if (mounted) {
+      // Jelezzük az AppStateManager-nek, hogy az app elindult
+      _appStateManager.markAppAsStarted();
+
+      // Navigálunk a főoldalra
       Navigator.of(context).pushReplacementNamed('/home');
     }
   }
@@ -113,71 +305,80 @@ class _SplashScreenState extends State<SplashScreen>
     _textController.dispose();
     _backgroundController.dispose();
     _particlesController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedBuilder(
-        animation: _backgroundController,
-        builder: (context, child) {
-          return Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primaryGreen.withValues(
-                    alpha: 0.9 + (_backgroundController.value * 0.1),
-                  ),
-                  AppColors.secondaryGreen.withValues(
-                    alpha: 0.7 + (_backgroundController.value * 0.3),
-                  ),
-                  Colors.teal.shade300.withValues(
-                    alpha: 0.5 + (_backgroundController.value * 0.2),
-                  ),
-                ],
-                stops: const [0.0, 0.6, 1.0],
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Háttér mintázat
-                _buildBackgroundPattern(),
+      body: Stack(
+        children: [
+          // Prerendered main app (invisible)
+          if (_prerenderedMainApp != null) _prerenderedMainApp!,
 
-                // Fő tartalom
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // MVK Logo
-                      _buildAnimatedLogo(),
-
-                      const SizedBox(height: 30),
-
-                      // Szöveg animáció
-                      _buildAnimatedText(),
-
-                      const SizedBox(height: 50),
-
-                      // Betöltő indikátor
-                      _buildLoadingIndicator(),
+          // Splash screen tartalom
+          AnimatedBuilder(
+            animation: _backgroundController,
+            builder: (context, child) {
+              return Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.primaryGreen.withValues(
+                        alpha: 0.9 + (_backgroundController.value * 0.1),
+                      ),
+                      AppColors.secondaryGreen.withValues(
+                        alpha: 0.7 + (_backgroundController.value * 0.3),
+                      ),
+                      Colors.teal.shade300.withValues(
+                        alpha: 0.5 + (_backgroundController.value * 0.2),
+                      ),
                     ],
+                    stops: const [0.0, 0.6, 1.0],
                   ),
                 ),
+                child: Stack(
+                  children: [
+                    // Háttér mintázat
+                    _buildBackgroundPattern(),
 
-                // Verzió információ
-                _buildVersionInfo(),
+                    // Fő tartalom
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // MVK Logo
+                          _buildAnimatedLogo(),
 
-                // Lebegő részecskék
-                _buildFloatingParticles(),
-              ],
-            ),
-          );
-        },
+                          const SizedBox(height: 30),
+
+                          // Szöveg animáció
+                          _buildAnimatedText(),
+
+                          const SizedBox(height: 50),
+
+                          // Betöltő indikátor
+                          _buildLoadingIndicator(),
+                        ],
+                      ),
+                    ),
+
+                    // Verzió információ
+                    _buildVersionInfo(),
+
+                    // Lebegő részecskék
+                    _buildFloatingParticles(),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -313,35 +514,103 @@ class _SplashScreenState extends State<SplashScreen>
         return Opacity(
           opacity: _textController.value,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
+            margin: const EdgeInsets.symmetric(horizontal: 40),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(25),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.3),
                 width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    backgroundColor: Colors.white.withOpacity(0.3),
+                // Progress Bar
+                Container(
+                  width: double.infinity,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _loadingProgress,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.5),
+                            blurRadius: 4,
+                            offset: const Offset(0, 0),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+
+                // Loading Message
                 Text(
-                  'Betöltés...',
+                  _loadingMessage,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white.withValues(alpha: 0.95),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
+                  textAlign: TextAlign.center,
                 ),
+
+                const SizedBox(height: 8),
+
+                // Progress Percentage
+                Text(
+                  '${(_loadingProgress * 100).round()}%',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+
+                // First Run Warning
+                if (_isFirstRun && _loadingProgress < 0.9) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.4),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '⚠️ Első indítás - kicsit lassabb',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

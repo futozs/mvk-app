@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/themes/app_themes.dart';
 import 'core/services/theme_service.dart';
+import 'core/services/app_state_manager.dart';
 import 'features/home/presentation/pages/splash_screen.dart';
 import 'shared/widgets/main_navigation_wrapper.dart';
 
@@ -20,31 +21,47 @@ void main() async {
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
 
+  // App State Manager inicializálása
+  final appStateManager = AppStateManager();
+  appStateManager.initialize();
+
   // Theme service inicializálása
   final themeService = ThemeService();
   await themeService.initTheme();
 
-  runApp(MVKApp(themeService: themeService));
+  runApp(MVKApp(themeService: themeService, appStateManager: appStateManager));
 }
 
 class MVKApp extends StatelessWidget {
   final ThemeService themeService;
+  final AppStateManager appStateManager;
 
-  const MVKApp({super.key, required this.themeService});
+  const MVKApp({
+    super.key,
+    required this.themeService,
+    required this.appStateManager,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: themeService,
-      child: Consumer<ThemeService>(
-        builder: (context, themeService, child) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: themeService),
+        ChangeNotifierProvider.value(value: appStateManager),
+      ],
+      child: Consumer2<ThemeService, AppStateManager>(
+        builder: (context, themeService, appStateManager, child) {
           return MaterialApp(
             title: 'MVK Miskolc',
             debugShowCheckedModeBanner: false,
             theme: AppThemes.lightTheme,
             darkTheme: AppThemes.darkTheme,
             themeMode: themeService.themeMode,
-            home: const SplashScreen(),
+            // Intelligens routing az app state alapján
+            home:
+                appStateManager.shouldShowSplash
+                    ? const SplashScreen()
+                    : const MainNavigationWrapper(),
             // Performance optimalizációk
             builder: (context, child) {
               return MediaQuery(

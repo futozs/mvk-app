@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 import 'navigation_widgets.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/timetable/presentation/pages/timetable_page.dart';
@@ -7,6 +8,7 @@ import '../../features/stops/presentation/pages/map_page.dart';
 import '../../features/favorites/presentation/pages/favorites_page.dart';
 import '../../features/more/presentation/pages/more_page.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/app_state_manager.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -70,44 +72,60 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          // MVK Header csík
-          _buildMVKHeader(context),
-          // Fő tartalom - Optimalizált PageView a swipe funkcionalitással
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              // Performance optimalizációk
-              physics: const ClampingScrollPhysics(), // Smooth scrolling
-              children:
-                  _pages.map((page) => _KeepAliveWrapper(child: page)).toList(),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: MainNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-      ),
-      floatingActionButton:
-          _currentIndex ==
-                  2 // Térkép oldal
-              ? AnimatedFloatingActionButton(
-                onPressed: () {
-                  // Közeli megállók keresése
-                  _showNearbyStopsBottomSheet();
+    return PopScope(
+      canPop: false, // Ne lépjen ki automatikusan
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Vissza gomb kezelése az AppStateManager-rel
+          final appStateManager = context.read<AppStateManager>();
+          final shouldPop = await appStateManager.handleBackButton(context);
+
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            // MVK Header csík
+            _buildMVKHeader(context),
+            // Fő tartalom - Optimalizált PageView a swipe funkcionalitással
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
                 },
-                icon: Symbols.my_location,
-                tooltip: 'Saját helyzet',
-              )
-              : null,
+                // Performance optimalizációk
+                physics: const ClampingScrollPhysics(), // Smooth scrolling
+                children:
+                    _pages
+                        .map((page) => _KeepAliveWrapper(child: page))
+                        .toList(),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: MainNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: _onTabTapped,
+        ),
+        floatingActionButton:
+            _currentIndex ==
+                    2 // Térkép oldal
+                ? AnimatedFloatingActionButton(
+                  onPressed: () {
+                    // Közeli megállók keresése
+                    _showNearbyStopsBottomSheet();
+                  },
+                  icon: Symbols.my_location,
+                  tooltip: 'Saját helyzet',
+                )
+                : null,
+      ),
     );
   }
 

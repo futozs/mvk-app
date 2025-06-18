@@ -11,6 +11,8 @@ import '../../../../shared/widgets/shimmer_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/animations/app_animations.dart';
 import '../../../../core/services/weather_service.dart';
+import '../../../../core/services/app_cache_service.dart';
+import '../../../../core/widgets/cache_debug_widget.dart';
 import '../../../stop_search/presentation/pages/stop_search_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,15 +28,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isLoading = true;
   WeatherData? _currentWeather;
   final WeatherService _weatherService = WeatherService();
+  final AppCacheService _cacheService = AppCacheService();
 
   // Valós hírek adatai - cache mechanizmussal
   List<Map<String, dynamic>> _newsItems = [];
   bool _newsLoading = true;
   String? _newsError;
-  DateTime? _lastNewsUpdate;
-
-  // Cache időtartama (5 perc)
-  static const Duration _newsCacheDuration = Duration(minutes: 5);
 
   @override
   void initState() {
@@ -50,9 +49,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _initializeData() async {
-    // Időjárás betöltése
+    // Időjárás betöltése cache service-ből
     try {
-      _currentWeather = await _weatherService.getCurrentWeather();
+      final cachedWeather = await _cacheService.getWeather();
+      if (cachedWeather != null) {
+        // Mock WeatherData létrehozása a cache-elt adatokból
+        _currentWeather = WeatherData(
+          temperature: cachedWeather['temperature'] ?? 22,
+          condition: _parseWeatherCondition(cachedWeather['condition']),
+          humidity: cachedWeather['humidity'] ?? 65,
+          windSpeed: cachedWeather['windSpeed'] ?? 12,
+          cityName: cachedWeather['city'] ?? 'Miskolc',
+          description: cachedWeather['description'] ?? 'Derült',
+          timestamp: DateTime.now(),
+        );
+      } else {
+        _currentWeather = await _weatherService.getCurrentWeather();
+      }
     } catch (e) {
       // Alapértelmezett időjárás hiba esetén
       _currentWeather = null;
@@ -62,7 +75,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     await _loadNews();
 
     // Gyorsabb betöltés - rövidebb várakozás
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 200)); // Még gyorsabb
 
     if (mounted) {
       setState(() {
@@ -75,51 +88,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadNews() async {
-    // Cache ellenőrzése
-    if (_lastNewsUpdate != null &&
-        DateTime.now().difference(_lastNewsUpdate!) < _newsCacheDuration &&
-        _newsItems.isNotEmpty) {
-      // Cached adatok használata
-      return;
-    }
-
     try {
       setState(() {
         _newsLoading = true;
         _newsError = null;
       });
 
-      // Curl parancs HTTP POST-ként
-      final response = await http.post(
-        Uri.parse('https://mobilalkalmazas.mvkzrt.hu:8443/analyzer.php'),
-        headers: {
-          'User-Agent':
-              'Dalvik/2.1.0 (Linux; U; Android 15; SM-A566B Build/AP3A.240905.015.A2)',
-          'Host': 'mobilalkalmazas.mvkzrt.hu:8443',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'NI9rln8F=1&V=53&o5xfIG1p99=hu',
-      );
+      // Cache service használata
+      final cachedNews = await _cacheService.getNews();
 
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        if (jsonData['forgalmi_hirek'] != null) {
-          setState(() {
-            _newsItems = List<Map<String, dynamic>>.from(
-              jsonData['forgalmi_hirek'],
-            );
-            _newsLoading = false;
-            _lastNewsUpdate = DateTime.now(); // Cache időpont frissítése
-          });
-        } else {
-          setState(() {
-            _newsItems = [];
-            _newsLoading = false;
-            _lastNewsUpdate = DateTime.now();
-          });
-        }
+      if (cachedNews != null) {
+        setState(() {
+          _newsItems = cachedNews;
+          _newsLoading = false;
+        });
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+        setState(() {
+          _newsItems = [];
+          _newsLoading = false;
+        });
       }
     } catch (e) {
       setState(() {
@@ -1020,6 +1007,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     return _NewsTickerWidget(newsItems: _newsItems);
+  }
+
+  /// Weather condition string-et WeatherCondition enum-má alakítja
+  WeatherCondition _parseWeatherCondition(String? condition) {
+    switch (condition?.toLowerCase()) {
+      case 'rainy':
+        return WeatherCondition.rainy;
+      case 'snowy':
+        return WeatherCondition.snowy;
+      case 'cloudy':
+        return WeatherCondition.cloudy;
+      case 'sunny':
+      default:
+        return WeatherCondition.sunny;
+    }
   }
 }
 
