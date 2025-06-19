@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import '../../../../shared/widgets/shimmer_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/favorites_service.dart';
+import '../../../stop_search/presentation/pages/stop_search_page.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -11,57 +13,62 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> {
+class _FavoritesPageState extends State<FavoritesPage>
+    with WidgetsBindingObserver {
   bool _isLoading = true;
-  List<FavoriteItem> _favorites = [];
+  List<FavoriteStop> _favorites = [];
+  final FavoritesService _favoritesService = FavoritesService();
+  String _selectedFilter = 'Összes';
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    WidgetsBinding.instance.addObserver(this);
+    // Hallgatjuk a favorites service változásait
+    _favoritesService.addListener(_onFavoritesChanged);
   }
 
-  Future<void> _loadFavorites() async {
-    await Future.delayed(const Duration(milliseconds: 800));
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _favoritesService.removeListener(_onFavoritesChanged);
+    super.dispose();
+  }
+
+  void _onFavoritesChanged() {
     if (mounted) {
       setState(() {
-        _isLoading = false;
-        _favorites = _getMockFavorites();
+        _favorites = _favoritesService.favoritesSortedByDate;
       });
     }
   }
 
-  List<FavoriteItem> _getMockFavorites() {
-    return [
-      FavoriteItem(
-        type: FavoriteType.route,
-        title: '12-es autóbusz',
-        subtitle: 'Széchenyi tér → Egyetemváros',
-        icon: Symbols.directions_bus,
-        color: AppColors.primaryGreen,
-      ),
-      FavoriteItem(
-        type: FavoriteType.stop,
-        title: 'Széchenyi tér',
-        subtitle: '4 járat érinti',
-        icon: Symbols.location_on,
-        color: AppColors.routePlanningBlue,
-      ),
-      FavoriteItem(
-        type: FavoriteType.route,
-        title: '1-es villamos',
-        subtitle: 'Diósgyőr → Selyemrét',
-        icon: Symbols.tram,
-        color: AppColors.routePlanningBlue,
-      ),
-      FavoriteItem(
-        type: FavoriteType.stop,
-        title: 'Városház tér',
-        subtitle: '8 járat érinti',
-        icon: Symbols.location_on,
-        color: AppColors.primaryGreen,
-      ),
-    ];
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Frissítjük a kedvenceket, amikor az alkalmazás visszatér az előtérbe
+      _refreshFavorites();
+    }
+  }
+
+  Future<void> _refreshFavorites() async {
+    if (mounted) {
+      setState(() {
+        _favorites = _favoritesService.favoritesSortedByDate;
+      });
+    }
+  }
+
+  Future<void> _loadFavorites() async {
+    await _favoritesService.initialize();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _favorites = _favoritesService.favoritesSortedByDate;
+      });
+    }
   }
 
   @override
@@ -152,11 +159,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
         const SizedBox(height: 24),
         Row(
           children: [
-            _buildFilterChip('Összes', true),
+            _buildFilterChip('Összes', _selectedFilter == 'Összes'),
             const SizedBox(width: 8),
-            _buildFilterChip('Útvonalak', false),
-            const SizedBox(width: 8),
-            _buildFilterChip('Megállók', false),
+            _buildFilterChip('Megállók', _selectedFilter == 'Megállók'),
           ],
         ),
       ],
@@ -164,101 +169,123 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   Widget _buildFilterChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color:
-            isSelected
-                ? AppColors.getPrimaryColor(context)
-                : AppColors.getCardColor(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = label;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
           color:
               isSelected
                   ? AppColors.getPrimaryColor(context)
-                  : AppColors.getTextSecondaryColor(context).withOpacity(0.3),
+                  : AppColors.getCardColor(context),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color:
+                isSelected
+                    ? AppColors.getPrimaryColor(context)
+                    : AppColors.getTextSecondaryColor(context).withOpacity(0.3),
+          ),
         ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color:
-              isSelected
-                  ? AppColors.getCardColor(context)
-                  : AppColors.getTextSecondaryColor(context),
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          fontSize: 14,
+        child: Text(
+          label,
+          style: TextStyle(
+            color:
+                isSelected
+                    ? AppColors.getCardColor(context)
+                    : AppColors.getTextSecondaryColor(context),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildFavoriteCard(FavoriteItem favorite, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.getCardColor(context),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppColors.getCardShadow(context),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: favorite.color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+  Widget _buildFavoriteCard(FavoriteStop favorite, int index) {
+    return GestureDetector(
+      onTap: () => _openStopSearch(favorite.stopCode),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.getCardColor(context),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppColors.getCardShadow(context),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.routePlanningBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Symbols.location_on,
+                color: AppColors.routePlanningBlue,
+                size: 24,
+              ),
             ),
-            child: Icon(favorite.icon, color: favorite.color, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  favorite.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    favorite.displayName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${favorite.stopName} (${favorite.stopCode})',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.getTextSecondaryColor(context),
+                    ),
+                  ),
+                  if (favorite.nickname != null &&
+                      favorite.nickname!.isNotEmpty)
+                    Text(
+                      'Becenév: ${favorite.nickname}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.getPrimaryColor(context),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _editNickname(favorite),
+                  icon: Icon(
+                    Symbols.edit,
+                    color: AppColors.getPrimaryColor(context),
+                  ),
+                  tooltip: 'Becenév szerkesztése',
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  favorite.subtitle,
-                  style: TextStyle(
-                    fontSize: 14,
+                IconButton(
+                  onPressed: () => _removeFavorite(favorite, index),
+                  icon: Icon(
+                    Symbols.delete,
                     color: AppColors.getTextSecondaryColor(context),
                   ),
+                  tooltip: 'Eltávolítás',
                 ),
               ],
             ),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                onPressed: () {
-                  // Gyors útvonaltervezés
-                },
-                icon: Icon(
-                  Symbols.navigation,
-                  color: AppColors.getPrimaryColor(context),
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  _removeFavorite(index);
-                },
-                icon: Icon(
-                  Symbols.delete,
-                  color: AppColors.getTextSecondaryColor(context),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -292,10 +319,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
-                // Navigálás menetrend oldalra
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StopSearchPage(),
+                  ),
+                );
               },
               icon: const Icon(Symbols.search),
-              label: const Text('Útvonalak böngészése'),
+              label: const Text('Megállók keresése'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.getPrimaryColor(context),
                 foregroundColor: AppColors.getCardColor(context),
@@ -314,38 +346,131 @@ class _FavoritesPageState extends State<FavoritesPage> {
     ).animate().fadeIn(duration: const Duration(milliseconds: 800));
   }
 
-  void _removeFavorite(int index) {
-    setState(() {
-      _favorites.removeAt(index);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Kedvenc eltávolítva'),
-        action: SnackBarAction(
-          label: 'Visszavonás',
-          onPressed: () {
-            // Visszavonás logika
-          },
+  void _removeFavorite(FavoriteStop favorite, int index) async {
+    final success = await _favoritesService.removeFavorite(favorite.stopCode);
+
+    if (success) {
+      setState(() {
+        _favorites.removeAt(index);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${favorite.displayName} eltávolítva'),
+          action: SnackBarAction(
+            label: 'Visszavonás',
+            onPressed: () async {
+              // Visszaadás a kedvencekhez
+              await _favoritesService.addFavorite(
+                stopCode: favorite.stopCode,
+                stopName: favorite.stopName,
+                nickname: favorite.nickname,
+              );
+              await _loadFavorites();
+            },
+          ),
         ),
+      );
+    }
+  }
+
+  void _openStopSearch(String stopCode) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StopSearchPage(initialStopCode: stopCode),
       ),
     );
   }
+
+  void _editNickname(FavoriteStop favorite) {
+    final TextEditingController nicknameController = TextEditingController();
+    nicknameController.text = favorite.nickname ?? '';
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppColors.getCardColor(context),
+            title: Text(
+              'Becenév szerkesztése',
+              style: TextStyle(
+                color: AppColors.getTextPrimaryColor(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Megálló: ${favorite.stopName} (${favorite.stopCode})',
+                  style: TextStyle(
+                    color: AppColors.getTextSecondaryColor(context),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nicknameController,
+                  decoration: InputDecoration(
+                    labelText: 'Becenév',
+                    hintText: 'pl. Otthon, Munka, Iskola...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.getPrimaryColor(context),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  maxLength: 50,
+                  autofocus: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Mégse',
+                  style: TextStyle(
+                    color: AppColors.getTextSecondaryColor(context),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  final newNickname = nicknameController.text.trim();
+                  final success = await _favoritesService.updateNickname(
+                    favorite.stopCode,
+                    newNickname.isEmpty ? null : newNickname,
+                  );
+
+                  if (success) {
+                    await _loadFavorites();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Becenév frissítve'),
+                        backgroundColor: AppColors.primaryGreen,
+                      ),
+                    );
+                  }
+                },
+                child: Text(
+                  'Mentés',
+                  style: TextStyle(
+                    color: AppColors.getPrimaryColor(context),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
 }
-
-class FavoriteItem {
-  final FavoriteType type;
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-
-  FavoriteItem({
-    required this.type,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-  });
-}
-
-enum FavoriteType { route, stop }

@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/themes/app_themes.dart';
 import 'core/services/theme_service.dart';
 import 'core/services/app_state_manager.dart';
+import 'core/services/favorites_service.dart';
 import 'features/home/presentation/pages/splash_screen.dart';
 import 'shared/widgets/main_navigation_wrapper.dart';
 
@@ -32,6 +33,10 @@ void main() async {
   // Theme service inicializálása
   final themeService = ThemeService();
   await themeService.initTheme();
+
+  // Favorites service inicializálása
+  final favoritesService = FavoritesService();
+  await favoritesService.initialize();
 
   runApp(MVKApp(themeService: themeService, appStateManager: appStateManager));
 }

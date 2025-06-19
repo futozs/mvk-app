@@ -5,10 +5,13 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/animations/app_animations.dart';
 import '../../../../core/services/mvk_api_service.dart';
+import '../../../../core/services/favorites_service.dart';
 import '../../../stops/presentation/pages/map_page.dart';
 
 class StopSearchPage extends StatefulWidget {
-  const StopSearchPage({super.key});
+  final String? initialStopCode;
+
+  const StopSearchPage({super.key, this.initialStopCode});
 
   @override
   State<StopSearchPage> createState() => _StopSearchPageState();
@@ -33,6 +36,7 @@ class _StopSearchPageState extends State<StopSearchPage>
 
   // API service
   final MVKApiService _apiService = MVKApiService();
+  final FavoritesService _favoritesService = FavoritesService();
 
   // Results
   StopInfoResponse? _stopInfo;
@@ -43,6 +47,19 @@ class _StopSearchPageState extends State<StopSearchPage>
     super.initState();
     _initializeAnimations();
     _startInitialAnimations();
+    _initializeFavorites();
+
+    // Ha van kezdő stopCode, töltsük be automatikusan
+    if (widget.initialStopCode != null) {
+      _stopCodeController.text = widget.initialStopCode!;
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _searchStop();
+      });
+    }
+  }
+
+  void _initializeFavorites() async {
+    await _favoritesService.initialize();
   }
 
   void _initializeAnimations() {
@@ -124,6 +141,7 @@ class _StopSearchPageState extends State<StopSearchPage>
           _hasResults = true;
           _isSearching = false;
           _showSearchView = false; // Switch to results view
+          _isFavorite = _favoritesService.isFavorite(stopCode);
         });
 
         // Success feedback
@@ -1221,26 +1239,165 @@ class _StopSearchPageState extends State<StopSearchPage>
     );
   }
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
+  void _toggleFavorite() async {
+    if (_stopInfo == null) return;
 
-    // TODO: Implement actual favorite saving/loading
-    HapticFeedback.lightImpact();
+    final stopCode = _stopCodeController.text.trim();
+    final stopName = _stopInfo!.stopName ?? 'Ismeretlen megálló';
 
-    final message =
-        _isFavorite ? 'Hozzáadva a kedvencekhez' : 'Eltávolítva a kedvencekből';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        backgroundColor:
-            _isFavorite
-                ? AppColors.primaryGreen
-                : AppColors.getTextSecondaryColor(context),
-      ),
+    try {
+      if (_isFavorite) {
+        // Eltávolítás a kedvencekből
+        final success = await _favoritesService.removeFavorite(stopCode);
+        if (success) {
+          setState(() {
+            _isFavorite = false;
+          });
+          HapticFeedback.lightImpact();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$stopName eltávolítva a kedvencekből'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: AppColors.getTextSecondaryColor(context),
+            ),
+          );
+        }
+      } else {
+        // Hozzáadás a kedvencekhez - kérjük meg a becenevet
+        _showNicknameDialog(stopCode, stopName);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hiba történt: $e'),
+          backgroundColor: AppColors.cancelledRed,
+        ),
+      );
+    }
+  }
+
+  void _showNicknameDialog(String stopCode, String stopName) {
+    final TextEditingController nicknameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppColors.getCardColor(context),
+            title: Text(
+              'Kedvenc megálló hozzáadása',
+              style: TextStyle(
+                color: AppColors.getTextPrimaryColor(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Megálló: $stopName ($stopCode)',
+                  style: TextStyle(
+                    color: AppColors.getTextSecondaryColor(context),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nicknameController,
+                  decoration: InputDecoration(
+                    labelText: 'Becenév (opcionális)',
+                    hintText: 'pl. Otthon, Munka, Iskola...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.getPrimaryColor(context),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  maxLength: 50,
+                  autofocus: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Mégse',
+                  style: TextStyle(
+                    color: AppColors.getTextSecondaryColor(context),
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _addToFavorites(
+                    stopCode,
+                    stopName,
+                    nicknameController.text.trim().isEmpty
+                        ? null
+                        : nicknameController.text.trim(),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.getPrimaryColor(context),
+                  foregroundColor: AppColors.getCardColor(context),
+                ),
+                child: const Text('Hozzáadás'),
+              ),
+            ],
+          ),
     );
+  }
+
+  Future<void> _addToFavorites(
+    String stopCode,
+    String stopName,
+    String? nickname,
+  ) async {
+    try {
+      final success = await _favoritesService.addFavorite(
+        stopCode: stopCode,
+        stopName: stopName,
+        nickname: nickname,
+      );
+
+      if (success) {
+        setState(() {
+          _isFavorite = true;
+        });
+        HapticFeedback.lightImpact();
+
+        final displayName = nickname?.isNotEmpty == true ? nickname! : stopName;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$displayName hozzáadva a kedvencekhez'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('A megálló már a kedvencek között van'),
+            backgroundColor: AppColors.getTextSecondaryColor(context),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hiba történt: $e'),
+          backgroundColor: AppColors.cancelledRed,
+        ),
+      );
+    }
   }
 
   Future<void> _trackVehicleOnMap(DepartureInfo departure) async {
