@@ -88,7 +88,7 @@ class WeatherData {
       case WeatherCondition.snowy:
         return ['❄️', '🌨️'];
       case WeatherCondition.thunderstorm:
-        return [ '💧', '🌩️'];
+        return ['💧', '🌩️'];
       case WeatherCondition.sunny:
         return ['☀️', '✨'];
       case WeatherCondition.windy:
@@ -100,7 +100,7 @@ class WeatherData {
 }
 
 class WeatherService {
-  static String get _apiKey => 
+  static String get _apiKey =>
       dotenv.env['WEATHER_API_KEY'] ?? 'your_api_key_here';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
