@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'dart:ui' show lerpDouble;
 import '../../../../shared/widgets/shimmer_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/favorites_service.dart';
@@ -39,7 +40,8 @@ class _FavoritesPageState extends State<FavoritesPage>
   void _onFavoritesChanged() {
     if (mounted) {
       setState(() {
-        _favorites = _favoritesService.favoritesSortedByDate;
+        _favorites =
+            _favoritesService.favoritesSortedByOrder; // Sorrend szerint
       });
     }
   }
@@ -55,7 +57,8 @@ class _FavoritesPageState extends State<FavoritesPage>
   Future<void> _refreshFavorites() async {
     if (mounted) {
       setState(() {
-        _favorites = _favoritesService.favoritesSortedByDate;
+        _favorites =
+            _favoritesService.favoritesSortedByOrder; // Sorrend szerint
       });
     }
   }
@@ -66,7 +69,8 @@ class _FavoritesPageState extends State<FavoritesPage>
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _favorites = _favoritesService.favoritesSortedByDate;
+        _favorites =
+            _favoritesService.favoritesSortedByOrder; // Sorrend szerint
       });
     }
   }
@@ -106,17 +110,43 @@ class _FavoritesPageState extends State<FavoritesPage>
         ),
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final favorite = _favorites[index];
-              return _buildFavoriteCard(favorite, index)
-                  .animate(delay: Duration(milliseconds: 100 * index))
-                  .fadeIn(duration: const Duration(milliseconds: 600))
-                  .slideX(
-                    begin: 0.3,
-                    duration: const Duration(milliseconds: 600),
-                  );
-            }, childCount: _favorites.length),
+          sliver: SliverToBoxAdapter(
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _favorites.length,
+              onReorder: _onReorder,
+              proxyDecorator: (child, index, animation) {
+                return AnimatedBuilder(
+                  animation: animation,
+                  builder: (BuildContext context, Widget? child) {
+                    final double animValue = Curves.easeInOut.transform(
+                      animation.value,
+                    );
+                    final double elevation = lerpDouble(0, 6, animValue)!;
+                    final double scale = lerpDouble(1, 1.02, animValue)!;
+                    return Transform.scale(
+                      scale: scale,
+                      child: Card(elevation: elevation, child: child),
+                    );
+                  },
+                  child: child,
+                );
+              },
+              itemBuilder: (context, index) {
+                final favorite = _favorites[index];
+                return Container(
+                  key: Key(favorite.stopCode), // Key itt kell legyen!
+                  child: _buildReorderableFavoriteCard(favorite, index)
+                      .animate(delay: Duration(milliseconds: 100 * index))
+                      .fadeIn(duration: const Duration(milliseconds: 600))
+                      .slideX(
+                        begin: 0.3,
+                        duration: const Duration(milliseconds: 600),
+                      ),
+                );
+              },
+            ),
           ),
         ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
@@ -145,7 +175,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    '${_favorites.length} elem mentve',
+                    '${_favorites.length} elem mentve • Húzd az elemeket a sorrend módosításához',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.getTextSecondaryColor(context),
@@ -205,7 +235,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildFavoriteCard(FavoriteStop favorite, int index) {
+  Widget _buildReorderableFavoriteCard(FavoriteStop favorite, int index) {
     return GestureDetector(
       onTap: () => _openStopSearch(favorite.stopCode),
       child: Container(
@@ -281,6 +311,15 @@ class _FavoritesPageState extends State<FavoritesPage>
                     color: AppColors.getTextSecondaryColor(context),
                   ),
                   tooltip: 'Eltávolítás',
+                ),
+                // Drag handle
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Symbols.drag_handle,
+                    color: AppColors.getTextSecondaryColor(context),
+                    size: 20,
+                  ),
                 ),
               ],
             ),
@@ -472,5 +511,11 @@ class _FavoritesPageState extends State<FavoritesPage>
             ],
           ),
     );
+  }
+
+  /// Kedvencek sorrendjének módosítása
+  void _onReorder(int oldIndex, int newIndex) async {
+    await _favoritesService.reorderFavorites(oldIndex, newIndex);
+    // A favorites service automatikusan értesíti a listener-eket
   }
 }

@@ -74,11 +74,19 @@ class FavoritesService extends ChangeNotifier {
       return false;
     }
 
+    // Következő order érték meghatározása
+    final nextOrder =
+        _favorites.isEmpty
+            ? 0
+            : _favorites.map((f) => f.order).reduce((a, b) => a > b ? a : b) +
+                1;
+
     final favorite = FavoriteStop(
       stopCode: stopCode,
       stopName: stopName,
       nickname: nickname,
       addedAt: DateTime.now(),
+      order: nextOrder, // Új order érték
     );
     _favorites.add(favorite);
     await _saveFavorites();
@@ -170,6 +178,47 @@ class FavoritesService extends ChangeNotifier {
     final sorted = List<FavoriteStop>.from(_favorites);
     sorted.sort((a, b) => a.displayName.compareTo(b.displayName));
     return sorted;
+  }
+
+  /// Kedvencek sorrendje szerinti lekérése
+  List<FavoriteStop> get favoritesSortedByOrder {
+    final sorted = List<FavoriteStop>.from(_favorites);
+    sorted.sort((a, b) => a.order.compareTo(b.order));
+    return sorted;
+  }
+
+  /// Kedvencek sorrendjének módosítása
+  Future<void> reorderFavorites(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    // Kedvencek sorrend szerint rendezése
+    final sortedFavorites = favoritesSortedByOrder;
+
+    // Elem mozgatása a listában
+    final item = sortedFavorites.removeAt(oldIndex);
+    sortedFavorites.insert(newIndex, item);
+
+    // Új sorrend értékek beállítása
+    for (int i = 0; i < sortedFavorites.length; i++) {
+      final index = _favorites.indexWhere(
+        (fav) => fav.stopCode == sortedFavorites[i].stopCode,
+      );
+      if (index != -1) {
+        _favorites[index] = _favorites[index].copyWith(order: i);
+      }
+    }
+
+    await _saveFavorites();
+    notifyListeners();
+
+    // Automatikus felhő szinkronizáció ha be van kapcsolva
+    if (isCloudSyncEnabled && FirebaseAuth.instance.currentUser != null) {
+      await syncToCloud();
+    }
+
+    debugPrint('🔄 Kedvencek sorrendje frissítve');
   }
 
   /// Jövőbeli profil adatok kezelésére előkészített függvények
@@ -303,12 +352,14 @@ class FavoriteStop {
   final String stopName;
   final String? nickname;
   final DateTime addedAt;
+  final int order; // Új mező a sorrend tárolásához
 
   const FavoriteStop({
     required this.stopCode,
     required this.stopName,
     this.nickname,
     required this.addedAt,
+    this.order = 0, // Alapértelmezett sorrend
   });
 
   /// Megjelenítendő név (becenév vagy eredeti név)
@@ -321,6 +372,7 @@ class FavoriteStop {
       stopName: json['stopName'] as String,
       nickname: json['nickname'] as String?,
       addedAt: DateTime.parse(json['addedAt'] as String),
+      order: json['order'] as int? ?? 0, // Alapértelmezett 0 ha nincs megadva
     );
   }
 
@@ -331,6 +383,7 @@ class FavoriteStop {
       'stopName': stopName,
       'nickname': nickname,
       'addedAt': addedAt.toIso8601String(),
+      'order': order,
     };
   }
 
@@ -340,12 +393,14 @@ class FavoriteStop {
     String? stopName,
     String? nickname,
     DateTime? addedAt,
+    int? order,
   }) {
     return FavoriteStop(
       stopCode: stopCode ?? this.stopCode,
       stopName: stopName ?? this.stopName,
       nickname: nickname ?? this.nickname,
       addedAt: addedAt ?? this.addedAt,
+      order: order ?? this.order,
     );
   }
 
@@ -356,7 +411,8 @@ class FavoriteStop {
         other.stopCode == stopCode &&
         other.stopName == stopName &&
         other.nickname == nickname &&
-        other.addedAt == addedAt;
+        other.addedAt == addedAt &&
+        other.order == order;
   }
 
   @override
@@ -364,11 +420,12 @@ class FavoriteStop {
     return stopCode.hashCode ^
         stopName.hashCode ^
         nickname.hashCode ^
-        addedAt.hashCode;
+        addedAt.hashCode ^
+        order.hashCode;
   }
 
   @override
   String toString() {
-    return 'FavoriteStop(stopCode: $stopCode, stopName: $stopName, nickname: $nickname, addedAt: $addedAt)';
+    return 'FavoriteStop(stopCode: $stopCode, stopName: $stopName, nickname: $nickname, addedAt: $addedAt, order: $order)';
   }
 }

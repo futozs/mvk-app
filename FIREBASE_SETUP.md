@@ -144,17 +144,10 @@ dependencies:
   cloud_firestore: ^4.17.5
 ```
 
-## 🔑 8. lépés: API Kulcsok Beállítása
+##  8. lépés: nope
 
-1. **Másold le a Firebase konfigurációs adatokat**
-2. **Frissítsd a `.env` fájlt:**
-   ```properties
-   FIREBASE_PROJECT_ID=your-actual-project-id
-   FIREBASE_API_KEY=your-actual-api-key
-   FIREBASE_APP_ID=your-actual-app-id
-   FIREBASE_MESSAGING_SENDER_ID=your-actual-sender-id
-   ```
-
+1. nincs 8. lépés
+   
 ## ✅ 9. lépés: Tesztelés
 
 1. **Indítsd el az alkalmazást:**
