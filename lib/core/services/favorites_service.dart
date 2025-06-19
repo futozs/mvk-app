@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Kedvenc megállók kezelését végző szolgáltatás
 class FavoritesService extends ChangeNotifier {
@@ -82,6 +84,11 @@ class FavoritesService extends ChangeNotifier {
     await _saveFavorites();
     notifyListeners(); // Értesítjük a UI-t a változásról
 
+    // Automatikus felhő szinkronizáció ha be van kapcsolva
+    if (isCloudSyncEnabled && FirebaseAuth.instance.currentUser != null) {
+      await syncToCloud();
+    }
+
     debugPrint('⭐ Kedvenc hozzáadva: ${favorite.displayName} ($stopCode)');
     return true;
   }
@@ -94,6 +101,12 @@ class FavoritesService extends ChangeNotifier {
     if (_favorites.length < initialLength) {
       await _saveFavorites();
       notifyListeners(); // Értesítjük a UI-t a változásról
+
+      // Automatikus felhő szinkronizáció ha be van kapcsolva
+      if (isCloudSyncEnabled && FirebaseAuth.instance.currentUser != null) {
+        await syncToCloud();
+      }
+
       debugPrint('🗑️ Kedvenc eltávolítva: $stopCode');
       return true;
     }
@@ -179,6 +192,109 @@ class FavoritesService extends ChangeNotifier {
     }
     return null;
   }
+
+  /// Kedvencek szinkronizálása a felhőbe (Google bejelentkezés után)
+  Future<bool> syncToCloud() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('⚠️ Nincs bejelentkezett felhasználó a szinkronizációhoz');
+        return false;
+      }
+
+      final userId = user.uid;
+      final firestore = FirebaseFirestore.instance;
+
+      // Helyi kedvencek feltöltése a felhőbe
+      final favoritesData =
+          _favorites.map((favorite) => favorite.toJson()).toList();
+
+      await firestore.collection('users').doc(userId).set({
+        'favorites': favoritesData,
+        'lastSyncTime': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint(
+        '☁️ Kedvencek szinkronizálva a felhőbe: ${_favorites.length} elem',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('❌ Hiba a felhő szinkronizáció során: $e');
+      return false;
+    }
+  }
+
+  /// Kedvencek visszaállítása a felhőből
+  Future<bool> syncFromCloud() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('⚠️ Nincs bejelentkezett felhasználó a szinkronizációhoz');
+        return false;
+      }
+
+      final userId = user.uid;
+      final firestore = FirebaseFirestore.instance;
+
+      final doc = await firestore.collection('users').doc(userId).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if (data['favorites'] != null) {
+          final cloudFavorites = List<dynamic>.from(data['favorites']);
+          final restoredFavorites =
+              cloudFavorites
+                  .map((item) => FavoriteStop.fromJson(item))
+                  .toList();
+
+          // Egyesítés: helyi + felhő kedvencek (duplikációk elkerülése)
+          final allFavorites = <String, FavoriteStop>{};
+
+          // Helyi kedvencek hozzáadása
+          for (final favorite in _favorites) {
+            allFavorites[favorite.stopCode] = favorite;
+          }
+
+          // Felhő kedvencek hozzáadása (felülírják a helyieket ha újabbak)
+          for (final favorite in restoredFavorites) {
+            if (!allFavorites.containsKey(favorite.stopCode) ||
+                favorite.addedAt.isAfter(
+                  allFavorites[favorite.stopCode]!.addedAt,
+                )) {
+              allFavorites[favorite.stopCode] = favorite;
+            }
+          }
+
+          _favorites = allFavorites.values.toList();
+          await _saveFavorites();
+          notifyListeners();
+
+          debugPrint(
+            '☁️ Kedvencek visszaállítva a felhőből: ${_favorites.length} elem',
+          );
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint('❌ Hiba a felhőből történő szinkronizáció során: $e');
+      return false;
+    }
+  }
+
+  /// Automatikus szinkronizáció bekapcsolása
+  Future<void> enableCloudSync() async {
+    await _prefs?.setBool('cloud_sync_enabled', true);
+    debugPrint('☁️ Automatikus felhő szinkronizáció bekapcsolva');
+  }
+
+  /// Automatikus szinkronizáció kikapcsolása
+  Future<void> disableCloudSync() async {
+    await _prefs?.setBool('cloud_sync_enabled', false);
+    debugPrint('☁️ Automatikus felhő szinkronizáció kikapcsolva');
+  }
+
+  /// Ellenőrzi, hogy be van-e kapcsolva a felhő szinkronizáció
+  bool get isCloudSyncEnabled => _prefs?.getBool('cloud_sync_enabled') ?? false;
 }
 
 /// Kedvenc megálló modell

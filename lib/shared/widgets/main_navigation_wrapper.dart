@@ -7,8 +7,10 @@ import '../../features/timetable/presentation/pages/timetable_page.dart';
 import '../../features/stops/presentation/pages/map_page.dart';
 import '../../features/favorites/presentation/pages/favorites_page.dart';
 import '../../features/more/presentation/pages/more_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/app_state_manager.dart';
+import '../../services/auth_service.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -253,19 +255,133 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                   // Értesítések megnyitása
                 },
               ),
-              IconButton(
-                icon: Icon(
-                  Symbols.person,
-                  color: AppColors.getPrimaryColor(context),
-                ),
-                onPressed: () {
-                  // Profil megnyitása
+              Consumer<AuthService>(
+                builder: (context, authService, child) {
+                  return IconButton(
+                    icon:
+                        authService.isLoggedIn &&
+                                authService.userPhotoURL != null
+                            ? CircleAvatar(
+                              radius: 12,
+                              backgroundImage: NetworkImage(
+                                authService.userPhotoURL!,
+                              ),
+                            )
+                            : Icon(
+                              Symbols.person,
+                              color: AppColors.getPrimaryColor(context),
+                            ),
+                    onPressed: () {
+                      if (authService.isLoggedIn) {
+                        // Profil oldal megnyitása
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const ProfilePage(),
+                          ),
+                        );
+                      } else {
+                        // Bejelentkezés
+                        _showLoginDialog(context, authService);
+                      }
+                    },
+                  );
                 },
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _showLoginDialog(BuildContext context, AuthService authService) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(Symbols.person, color: AppColors.getPrimaryColor(context)),
+                const SizedBox(width: 12),
+                const Text('Bejelentkezés'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Jelentkezz be a Google fiókoddal, hogy szinkronizálhasd a kedvenceidet és beállításaidat.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.getPrimaryColor(context).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Symbols.cloud_sync,
+                    size: 40,
+                    color: AppColors.getPrimaryColor(context),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Mégse'),
+              ),
+              ElevatedButton.icon(
+                onPressed:
+                    authService.isLoading
+                        ? null
+                        : () async {
+                          final success = await authService.signInWithGoogle();
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Sikeres bejelentkezés!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Bejelentkezés sikertelen!'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                icon:
+                    authService.isLoading
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Symbols.login),
+                label: Text(
+                  authService.isLoading ? 'Folyamatban...' : 'Bejelentkezés',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.getPrimaryColor(context),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
     );
   }
 }

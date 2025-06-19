@@ -52,6 +52,13 @@ dependencies:
   share_plus: ^9.0.0
   permission_handler: ^11.3.1
   
+  # Authentication és felhő szinkronizáció
+  google_sign_in: ^6.2.1
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.5
+  firebase_storage: ^11.7.7
+  
   cupertino_icons: ^1.0.8
   latlong2: ^0.9.1
   flutter_map_cancellable_tile_provider: ^3.1.0

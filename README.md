@@ -59,7 +59,7 @@ flutter build apk --no-tree-shake-icons
 
 ## Környezeti változók
 
-Az alkalmazás `.env` fájlt használ az API kulcsok és egyéb érzékeny adatok tárolására. 
+Az alkalmazás `.env` fájlt használ az időjárás API kulcs tárolására. 
 
 ### Beállítás:
 
@@ -79,6 +79,38 @@ Az alkalmazás `.env` fájlt használ az API kulcsok és egyéb érzékeny adato
    - Másold ki az API kulcsot a `.env` fájlba
 
 **⚠️ FONTOS: A `.env` fájl nincs verziókezelés alatt! Soha ne commitold az API kulcsaidat!**
+
+## 🔐 Google Bejelentkezés és Felhő Szinkronizáció
+
+Az alkalmazás támogatja a Google fiókkal történő bejelentkezést és a kedvencek felhő szinkronizációját:
+
+### Funkciók:
+- **Google bejelentkezés**: Biztonságos hitelesítés Google fiókkal
+- **Profilkép megjelenítése**: A Google fiók profilképe megjelenik a navigációs sávban
+- **Automatikus szinkronizáció**: A kedvenc megállók automatikusan szinkronizálódnak a felhőbe
+- **Manuális szinkronizáció**: Lehetőség a kézi szinkronizációra
+- **Adatok visszaállítása**: Kedvencek visszaállítása másik eszközről
+
+### Használat:
+1. Kattints a profil ikonra a navigációs sávban
+2. Jelentkezz be a Google fiókoddal
+3. Kapcsold be az automatikus szinkronizációt
+4. A kedvenceid automatikusan mentődnek a felhőbe
+
+### 🔧 Firebase Beállítás:
+**Részletes útmutató:** [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+
+**Gyors beállítás fejlesztőknek:**
+1. Firebase projekt létrehozása a [Firebase Console](https://console.firebase.google.com/)-on
+2. Android app hozzáadása a projekthez (`hu.mvk.zrt.mvk_app` package névvel)
+3. `google-services.json` letöltése és elhelyezése: `android/app/google-services.json`
+4. SHA-1 ujjlenyomat hozzáadása a Firebase projekthez:
+   ```bash
+   cd android && ./gradlew signingReport
+   ```
+5. Részletes lépések: [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+
+⚠️ **FONTOS:** A `google-services.json` és egyéb érzékeny fájlok már a `.gitignore`-ban vannak!
 
 ## Képernyőképek 📱
 

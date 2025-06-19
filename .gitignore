@@ -7,6 +7,31 @@
 # VAGY csak kilistázás (törlés nélkül):
 # find . -type d -empty
 
+# 🔐 FIREBASE ÉS GOOGLE SERVICES - ÉRZÉKENY ADATOK
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+.env
+.env.*
+
+# 🔑 API KULCSOK ÉS KONFIGURÁCIÓK
+api_keys.dart
+secrets.dart
+config/
+credentials/
+*.p12
+*.p8
+*.cer
+*.key
+*.pem
+
+# 🔐 BIZTONSÁGI FÁJLOK
+keystore.properties
+key.properties
+upload-keystore.jks
+*.keystore
+*.jks
+
 *.class
 *.log
 *.pyc
