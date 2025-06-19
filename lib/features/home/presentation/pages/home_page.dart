@@ -55,9 +55,14 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _initializeData() async {
+    // Ellenőrizzük először a cache állapotát
+    final hasFreshCache = !_cacheService.needsRefresh();
+
     // Időjárás betöltése cache service-ből
     try {
-      final cachedWeather = await _cacheService.getWeather();
+      final cachedWeather = await _cacheService.getWeather(
+        forceRefresh: !hasFreshCache,
+      );
       if (cachedWeather != null) {
         // WeatherData létrehozása a cache-elt adatokból
         _currentWeather = WeatherData(
@@ -69,10 +74,15 @@ class _HomePageState extends State<HomePage>
           description: cachedWeather['description'] ?? 'Derült',
           timestamp: DateTime.now(),
         );
+
+        if (hasFreshCache) {
+          debugPrint('🌤️ Időjárás cache-ből betöltve (friss)');
+        }
       } else {
         // Ha nincs cache, próbáljuk meg közvetlenül a weather service-ből
         try {
           _currentWeather = await _weatherService.getCurrentWeather();
+          debugPrint('🌤️ Időjárás API-ból betöltve');
         } catch (apiError) {
           print('⚠️ Weather API hiba: $apiError');
           // Ha az API nem elérhető, null-ra állítjuk
@@ -85,8 +95,8 @@ class _HomePageState extends State<HomePage>
       _currentWeather = null;
     }
 
-    // Hírek betöltése
-    await _loadNews();
+    // Hírek betöltése - csak akkor fetch-el ha szükséges
+    await _loadNews(forceRefresh: !hasFreshCache);
 
     // Gyorsabb betöltés - rövidebb várakozás
     await Future.delayed(const Duration(milliseconds: 200)); // Még gyorsabb
@@ -101,21 +111,29 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _loadNews() async {
+  Future<void> _loadNews({bool forceRefresh = false}) async {
     try {
       setState(() {
         _newsLoading = true;
         _newsError = null;
       });
 
-      // Cache service használata
-      final cachedNews = await _cacheService.getNews();
+      // Cache service használata - forceRefresh paraméter továbbítása
+      final cachedNews = await _cacheService.getNews(
+        forceRefresh: forceRefresh,
+      );
 
       if (cachedNews != null) {
         setState(() {
           _newsItems = cachedNews;
           _newsLoading = false;
         });
+
+        if (!forceRefresh) {
+          debugPrint(
+            '📰 Hírek cache-ből betöltve (${cachedNews.length} darab)',
+          );
+        }
       } else {
         setState(() {
           _newsItems = [];
@@ -131,9 +149,9 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  /// Automatikus frissítés indítása 5 percenként
+  /// Automatikus frissítés indítása 10 percenként
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
       _refreshDataInBackground();
     });
   }
@@ -175,8 +193,30 @@ class _HomePageState extends State<HomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // Alkalmazás visszatéréskor frissítés
-      _refreshDataInBackground();
+      // Alkalmazás visszatéréskor csak akkor frissítünk, ha a cache lejárt
+      _smartRefreshOnResume();
+    }
+  }
+
+  /// Intelligens frissítés alkalmazás visszatéréskor
+  Future<void> _smartRefreshOnResume() async {
+    try {
+      // Ellenőrizzük hogy szükséges-e frissítés
+      if (!_cacheService.needsRefresh()) {
+        final lastCache = _cacheService.getLastCacheTime();
+        if (lastCache != null) {
+          final timeSinceCache = DateTime.now().difference(lastCache);
+          debugPrint(
+            '📱 Cache még friss: ${timeSinceCache.inMinutes} perc múlva lejár',
+          );
+          return; // Cache még friss, nincs szükség frissítésre
+        }
+      }
+
+      debugPrint('🔄 Cache lejárt, frissítés szükséges');
+      await _refreshDataInBackground();
+    } catch (e) {
+      debugPrint('❌ Smart refresh hiba: $e');
     }
   }
 

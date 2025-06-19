@@ -84,14 +84,23 @@ class AppStateManager extends ChangeNotifier with WidgetsBindingObserver {
         '⏱️ Háttérben töltött idő: ${backgroundDuration.inSeconds} másodperc',
       );
 
-      // Ha kevesebb mint 30 másodpercet töltött a háttérben, ne splash screen
-      if (backgroundDuration.inSeconds < 30) {
+      // Csak akkor splash screen, ha 10 percnél tovább volt háttérben
+      if (backgroundDuration.inSeconds < 60) {
+        // 1 percnél kevesebb - gyors visszatérés
         _shouldShowSplash = false;
         debugPrint('✅ Gyors visszatérés - splash mellőzése');
-      } else if (backgroundDuration.inMinutes > 5) {
-        // Ha 5 percnél tovább volt háttérben, refresh szükséges
+      } else if (backgroundDuration.inMinutes > 10) {
+        // 10 percnél tovább volt háttérben - frissítés szükséges
         _shouldShowSplash = true;
-        debugPrint('🔄 Hosszú háttér idő - splash screen megjelenítése');
+        debugPrint(
+          '🔄 Hosszú háttér idő (${backgroundDuration.inMinutes} perc) - splash screen megjelenítése',
+        );
+      } else {
+        // Közepes idő - nincs splash, de a cache service majd eldönti a frissítést
+        _shouldShowSplash = false;
+        debugPrint(
+          '📱 Közepes háttér idő - splash mellőzése, cache alapú frissítés',
+        );
       }
 
       _isBackgroundMode = false;

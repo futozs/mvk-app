@@ -25,9 +25,9 @@ class AppCacheService {
   static const String _appInitializedKey = 'app_initialized';
   static const String _preloadCompletedKey = 'preload_completed';
 
-  // Cache időtartamok
-  static const Duration _newsCacheDuration = Duration(minutes: 5);
-  static const Duration _weatherCacheDuration = Duration(minutes: 5);
+  // Cache időtartamok - 10 perc mindenhol
+  static const Duration _newsCacheDuration = Duration(minutes: 10);
+  static const Duration _weatherCacheDuration = Duration(minutes: 10);
 
   // Előtöltött adatok
   List<Map<String, dynamic>>? _cachedNews;
@@ -272,6 +272,30 @@ class AppCacheService {
   bool get isInitialized => _isInitialized;
   bool get isPreloading => _isPreloading;
   bool get isPreloadCompleted => _prefs?.getBool(_preloadCompletedKey) ?? false;
+
+  /// Ellenőrzi hogy szükséges-e bármelyik cache frissítése
+  bool needsRefresh() {
+    return _isNewsCacheExpired() || _isWeatherCacheExpired();
+  }
+
+  /// Utolsó cache frissítés ideje
+  DateTime? getLastCacheTime() {
+    final newsTimestamp = _prefs?.getInt(_newsTimestampKey);
+    final weatherTimestamp = _prefs?.getInt(_weatherTimestampKey);
+
+    if (newsTimestamp == null && weatherTimestamp == null) return null;
+
+    final newsTime =
+        newsTimestamp != null
+            ? DateTime.fromMillisecondsSinceEpoch(newsTimestamp)
+            : DateTime(1970);
+    final weatherTime =
+        weatherTimestamp != null
+            ? DateTime.fromMillisecondsSinceEpoch(weatherTimestamp)
+            : DateTime(1970);
+
+    return newsTime.isAfter(weatherTime) ? newsTime : weatherTime;
+  }
 
   // === HELPER METÓDUSOK ===
 

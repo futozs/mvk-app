@@ -583,10 +583,10 @@ class _SettingsPageState extends State<SettingsPage>
               children: [
                 const Text('Verzió: 1.0.0'),
                 const SizedBox(height: 8),
-                const Text('Fejlesztő: MVK Zrt.'),
+                const Text('Fejlesztő: futozs.'),
                 const SizedBox(height: 8),
                 Text(
-                  'A Miskolci Közlekedési Zrt. hivatalos alkalmazása.',
+                  'A Miskolci Közlekedési Zrt. NEM hivatalos alkalmazása.',
                   style: TextStyle(
                     color: AppColors.getTextSecondaryColor(context),
                   ),
