@@ -2,6 +2,47 @@
 
 Modern Flutter alkalmazás a Miskolci Városi Közlekedés (MVK) menetrendjének és járatkövetésének megjelenítésére.
 
+## Képernyőképek 📱
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <a href="https://cdn.futozsombor.hu/u/BIfWO9.jpg">
+          <img src="https://cdn.futozsombor.hu/u/BIfWO9.jpg" width="200" alt="Betöltő képernyő">
+        </a>
+        <br>
+        <em>Betöltő képernyő</em>
+      </td>
+      <td align="center">
+        <a href="https://cdn.futozsombor.hu/u/jl4COt.jpg">
+          <img src="https://cdn.futozsombor.hu/u/jl4COt.jpg" width="200" alt="Főoldal">
+        </a>
+        <br>
+        <em>Főoldal</em>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <a href="https://cdn.futozsombor.hu/u/qbYJYl.jpg">
+          <img src="https://cdn.futozsombor.hu/u/qbYJYl.jpg" width="200" alt="Kedvencek">
+        </a>
+        <br>
+        <em>Kedvencek</em>
+      </td>
+      <td align="center">
+        <a href="https://cdn.futozsombor.hu/u/kgmEVD.jpg">
+          <img src="https://cdn.futozsombor.hu/u/kgmEVD.jpg" width="200" alt="Beállítások">
+        </a>
+        <br>
+        <em>Beállítások</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+*Kattints a képekre a nagyobb méretű megjelenítéshez*
+
 ## FIGYELEM - ALPHA VERZIÓ!
 
 **EZ AZ ALKALMAZÁS MÉG CSAK EGY ÖTLET SZINTJÉN VAN!**
