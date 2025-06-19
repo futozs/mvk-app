@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'navigation_widgets.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/timetable/presentation/pages/timetable_page.dart';
@@ -205,33 +206,36 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.getPrimaryColor(context).withOpacity(0.15),
-                      AppColors.getPrimaryColor(context).withOpacity(0.08),
+              GestureDetector(
+                onTap: () => _showMVKWebsiteDialog(context),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.getPrimaryColor(context).withOpacity(0.15),
+                        AppColors.getPrimaryColor(context).withOpacity(0.08),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.getPrimaryColor(
+                          context,
+                        ).withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.getPrimaryColor(
-                        context,
-                      ).withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/mlogobig.png',
+                      width: 26,
+                      height: 26,
+                      fit: BoxFit.contain,
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    'assets/images/mlogobig.png',
-                    width: 26,
-                    height: 26,
-                    fit: BoxFit.contain,
                   ),
                 ),
               ),
@@ -295,94 +299,705 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }
 
   void _showLoginDialog(BuildContext context, AuthService authService) {
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showGeneralDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(Symbols.person, color: AppColors.getPrimaryColor(context)),
-                const SizedBox(width: 12),
-                const Text('Bejelentkezés'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Jelentkezz be a Google fiókoddal, hogy szinkronizálhasd a kedvenceidet és beállításaidat.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.getPrimaryColor(context).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Symbols.cloud_sync,
-                    size: 40,
-                    color: AppColors.getPrimaryColor(context),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Mégse'),
-              ),
-              ElevatedButton.icon(
-                onPressed:
-                    authService.isLoading
-                        ? null
-                        : () async {
-                          final success = await authService.signInWithGoogle();
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Sikeres bejelentkezés!'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Bejelentkezés sikertelen!'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                icon:
-                    authService.isLoading
-                        ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Symbols.login),
-                label: Text(
-                  authService.isLoading ? 'Folyamatban...' : 'Bejelentkezés',
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.getPrimaryColor(context),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation1, animation2) {
+        return Container();
+      },
+      transitionBuilder: (context, animation1, animation2, child) {
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+            CurvedAnimation(parent: animation1, curve: Curves.easeOutBack),
           ),
+          child: FadeTransition(
+            opacity: animation1,
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 32),
+                width: 340,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 0,
+                    ),
+                    BoxShadow(
+                      color: AppColors.getPrimaryColor(
+                        context,
+                      ).withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 0),
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header - profil ikon és cím
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.getPrimaryColor(context),
+                                      AppColors.getPrimaryColor(
+                                        context,
+                                      ).withOpacity(0.8),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.getPrimaryColor(
+                                        context,
+                                      ).withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Symbols.person,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Bejelentkezés',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            isDark
+                                                ? Colors.white
+                                                : const Color(0xFF1A202C),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            (isDark
+                                                ? Colors.grey.shade800
+                                                : Colors.grey.shade100),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        'Google fiók',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color:
+                                              isDark
+                                                  ? Colors.grey.shade400
+                                                  : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Cloud sync ikon középen
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.getPrimaryColor(
+                                context,
+                              ).withOpacity(0.1),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.getPrimaryColor(
+                                  context,
+                                ).withOpacity(0.2),
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Symbols.cloud_sync,
+                              size: 36,
+                              color: AppColors.getPrimaryColor(context),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Leírás szöveg
+                          Text(
+                            'Jelentkezz be a Google fiókoddal,\nhogy szinkronizálhasd a kedvenceidet\nés a beállításaidat.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color:
+                                  isDark
+                                      ? Colors.grey.shade300
+                                      : const Color(0xFF4A5568),
+                              height: 1.4,
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Előnyök lista
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color:
+                                  isDark
+                                      ? Colors.grey.shade900.withOpacity(0.5)
+                                      : AppColors.getPrimaryColor(
+                                        context,
+                                      ).withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    isDark
+                                        ? Colors.grey.shade800
+                                        : AppColors.getPrimaryColor(
+                                          context,
+                                        ).withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildFeatureItem(
+                                  icon: Symbols.favorite,
+                                  text: 'A kedvencek szinkronizálása',
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(height: 8),
+                                _buildFeatureItem(
+                                  icon: Symbols.settings,
+                                  text: 'A beállítások mentése',
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(height: 8),
+                                _buildFeatureItem(
+                                  icon: Symbols.devices,
+                                  text: 'Több eszköz támogatása',
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Gombok
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isDark
+                                            ? Colors.grey.shade800
+                                            : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color:
+                                          isDark
+                                              ? Colors.grey.shade700
+                                              : Colors.grey.shade300,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: TextButton(
+                                    onPressed:
+                                        () => Navigator.of(context).pop(),
+                                    style: TextButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Mégse',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 3,
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.getPrimaryColor(context),
+                                        AppColors.getPrimaryColor(
+                                          context,
+                                        ).withOpacity(0.85),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.getPrimaryColor(
+                                          context,
+                                        ).withOpacity(0.25),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    onPressed:
+                                        authService.isLoading
+                                            ? null
+                                            : () async {
+                                              final success =
+                                                  await authService
+                                                      .signInWithGoogle();
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop();
+                                                if (success) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: const Text(
+                                                        'Sikeres bejelentkezés!',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.green,
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                } else {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: const Text(
+                                                        'Bejelentkezés sikertelen!',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon:
+                                        authService.isLoading
+                                            ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                            : const Icon(
+                                              Symbols.login,
+                                              color: Colors.white,
+                                              size: 18,
+                                            ),
+                                    label: Text(
+                                      authService.isLoading
+                                          ? 'Folyamatban...'
+                                          : 'Bejelentkezés',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  Widget _buildFeatureItem({
+    required IconData icon,
+    required String text,
+    required bool isDark,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.getPrimaryColor(context)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.grey.shade400 : const Color(0xFF4A5568),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showMVKWebsiteDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation1, animation2) {
+        return Container();
+      },
+      transitionBuilder: (context, animation1, animation2, child) {
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+            CurvedAnimation(parent: animation1, curve: Curves.easeOutBack),
+          ),
+          child: FadeTransition(
+            opacity: animation1,
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 32),
+                width: 320,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 0,
+                    ),
+                    BoxShadow(
+                      color: AppColors.getPrimaryColor(
+                        context,
+                      ).withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 0),
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header kompakt verzió
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.getPrimaryColor(context),
+                                      AppColors.getPrimaryColor(
+                                        context,
+                                      ).withOpacity(0.8),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.getPrimaryColor(
+                                        context,
+                                      ).withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset(
+                                  'assets/images/mlogobig.png',
+                                  width: 28,
+                                  height: 28,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'MVK Weboldal',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            isDark
+                                                ? Colors.white
+                                                : const Color(0xFF1A202C),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            (isDark
+                                                ? Colors.grey.shade800
+                                                : Colors.grey.shade100),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        'mvkzrt.hu',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color:
+                                              isDark
+                                                  ? Colors.grey.shade400
+                                                  : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          Text(
+                            'Megnyitod a hivatalos MVK weboldalt?',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color:
+                                  isDark
+                                      ? Colors.grey.shade300
+                                      : const Color(0xFF4A5568),
+                              height: 1.4,
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Kompakt gombok
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isDark
+                                            ? Colors.grey.shade800
+                                            : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color:
+                                          isDark
+                                              ? Colors.grey.shade700
+                                              : Colors.grey.shade300,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: TextButton(
+                                    onPressed:
+                                        () => Navigator.of(context).pop(),
+                                    style: TextButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Mégse',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.getPrimaryColor(context),
+                                        AppColors.getPrimaryColor(
+                                          context,
+                                        ).withOpacity(0.85),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.getPrimaryColor(
+                                          context,
+                                        ).withOpacity(0.25),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      await _launchMVKWebsite();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Symbols.open_in_new,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                      'Megnyitás',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _launchMVKWebsite() async {
+    final Uri url = Uri.parse('https://mvkzrt.hu/');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        // Ha nem sikerül megnyitni, mutassunk hibaüzenetet
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Nem sikerült megnyitni a weboldalt!'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Hibakezelés
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hiba történt a weboldal megnyitása során!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 
