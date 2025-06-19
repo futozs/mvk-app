@@ -42,6 +42,13 @@ Ez az alkalmazás **AI közreműködésével** lett létrehozva "vibe coded" mó
 # Függőségek telepítése
 flutter pub get
 
+# Környezeti változók beállítása
+# 1. Másold le a .env.example fájlt .env néven
+cp .env.example .env
+
+# 2. Szerkeszd a .env fájlt és add meg a saját API kulcsaidat
+# WEATHER_API_KEY=your_openweathermap_api_key_here
+
 # Alkalmazás futtatása debug módban
 flutter run --debug
 
@@ -49,6 +56,29 @@ flutter run --debug
 flutter build apk
 flutter build apk --no-tree-shake-icons
 ```
+
+## Környezeti változók
+
+Az alkalmazás `.env` fájlt használ az API kulcsok és egyéb érzékeny adatok tárolására. 
+
+### Beállítás:
+
+1. **Másold le a példa fájlt:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Szerkeszd a `.env` fájlt:**
+   ```env
+   WEATHER_API_KEY=your_api_key_here
+   ```
+
+3. **OpenWeatherMap API kulcs beszerzése:**
+   - Menj a [OpenWeatherMap](https://openweathermap.org/api) oldalra
+   - Regisztrálj egy ingyenes fiókot
+   - Másold ki az API kulcsot a `.env` fájlba
+
+**⚠️ FONTOS: A `.env` fájl nincs verziókezelés alatt! Soha ne commitold az API kulcsaidat!**
 
 ## Licensz
 minekaz'

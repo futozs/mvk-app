@@ -48,6 +48,9 @@ package-lock.json
 *.sqlite
 *.sqlite3
 from_0_0_3_to_104617_183122_44.sql
+
+# Környezeti változók (érzékeny adatok)
+.env
 test_mobile_api.dart
 test_mvk_api.dart
 test_proxy_integration.dart

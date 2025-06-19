@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 enum WeatherCondition {
   sunny,
@@ -83,15 +84,15 @@ class WeatherData {
   List<String> get weatherParticles {
     switch (condition) {
       case WeatherCondition.rainy:
-        return ['💧', '', '🌧️'];
+        return ['💧', '🌧️'];
       case WeatherCondition.snowy:
-        return ['❄️', '🌨️', ''];
+        return ['❄️', '🌨️'];
       case WeatherCondition.thunderstorm:
-        return ['', '💧', '🌩️'];
+        return [ '💧', '🌩️'];
       case WeatherCondition.sunny:
-        return ['☀️', '', '✨'];
+        return ['☀️', '✨'];
       case WeatherCondition.windy:
-        return ['💨', '', '🌪️'];
+        return ['💨', '🌪️'];
       default:
         return ['☁️', '💭'];
     }
@@ -99,8 +100,8 @@ class WeatherData {
 }
 
 class WeatherService {
-  static const String _apiKey =
-      '0bc4a010b711fdb90ad8f9278225da16'; // OpenWeatherMap API key IGEN BENNE HAGYTAM
+  static String get _apiKey => 
+      dotenv.env['WEATHER_API_KEY'] ?? 'your_api_key_here';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
   // Miskolc koordinátái

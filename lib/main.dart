@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/themes/app_themes.dart';
 import 'core/services/theme_service.dart';
 import 'core/services/app_state_manager.dart';
@@ -9,6 +10,9 @@ import 'shared/widgets/main_navigation_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // .env fájl betöltése
+  await dotenv.load(fileName: ".env");
 
   // Orientáció rögzítése - csak portré mód
   await SystemChrome.setPreferredOrientations([

@@ -38,6 +38,7 @@ dependencies:
   hive_flutter: ^1.1.0
   cached_network_image: ^3.3.1
   http: ^1.1.0
+  flutter_dotenv: ^5.1.0
   
   # Térkép és helymeghatározás
   google_maps_flutter: ^2.6.1
@@ -93,6 +94,7 @@ flutter:
     - assets/lottie/
     - assets/rive/
     - mvkzrt/
+    - .env
 
   # A Material Design alapértelmezett fontjait használjuk
   # fonts:
