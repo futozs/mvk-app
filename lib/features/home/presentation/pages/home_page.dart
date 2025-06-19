@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 import 'dart:convert';
 import '../../../../shared/widgets/animated_cards.dart';
 import '../../../../shared/widgets/shimmer_widgets.dart';
@@ -12,7 +13,6 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/animations/app_animations.dart';
 import '../../../../core/services/weather_service.dart';
 import '../../../../core/services/app_cache_service.dart';
-import '../../../../core/widgets/cache_debug_widget.dart';
 import '../../../stop_search/presentation/pages/stop_search_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -22,13 +22,17 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _masterController;
 
   bool _isLoading = true;
   WeatherData? _currentWeather;
   final WeatherService _weatherService = WeatherService();
   final AppCacheService _cacheService = AppCacheService();
+
+  // Automatikus frissítés timer
+  Timer? _refreshTimer;
 
   // Valós hírek adatai - cache mechanizmussal
   List<Map<String, dynamic>> _newsItems = [];
@@ -38,6 +42,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Egyszerűsített animáció kontroller
     _masterController = AnimationController(
@@ -46,6 +51,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
 
     _initializeData();
+    _startAutoRefresh();
   }
 
   Future<void> _initializeData() async {
@@ -53,7 +59,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       final cachedWeather = await _cacheService.getWeather();
       if (cachedWeather != null) {
-        // Mock WeatherData létrehozása a cache-elt adatokból
+        // WeatherData létrehozása a cache-elt adatokból
         _currentWeather = WeatherData(
           temperature: cachedWeather['temperature'] ?? 22,
           condition: _parseWeatherCondition(cachedWeather['condition']),
@@ -64,9 +70,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           timestamp: DateTime.now(),
         );
       } else {
-        _currentWeather = await _weatherService.getCurrentWeather();
+        // Ha nincs cache, próbáljuk meg közvetlenül a weather service-ből
+        try {
+          _currentWeather = await _weatherService.getCurrentWeather();
+        } catch (apiError) {
+          print('⚠️ Weather API hiba: $apiError');
+          // Ha az API nem elérhető, null-ra állítjuk
+          _currentWeather = null;
+        }
       }
     } catch (e) {
+      print('❌ Időjárás inicializálási hiba: $e');
       // Alapértelmezett időjárás hiba esetén
       _currentWeather = null;
     }
@@ -117,8 +131,59 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  /// Automatikus frissítés indítása 5 percenként
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _refreshDataInBackground();
+    });
+  }
+
+  /// Adatok frissítése a háttérben
+  Future<void> _refreshDataInBackground() async {
+    try {
+      // Cache-ek frissítése
+      await _cacheService.getNews(forceRefresh: true);
+      await _cacheService.getWeather(forceRefresh: true);
+
+      // Weather service háttér frissítése
+      await _weatherService.refreshInBackground();
+
+      // UI frissítése ha mounted
+      if (mounted) {
+        await _loadNews();
+        final cachedWeather = await _cacheService.getWeather();
+        if (cachedWeather != null) {
+          setState(() {
+            _currentWeather = WeatherData(
+              temperature: cachedWeather['temperature'] ?? 22,
+              condition: _parseWeatherCondition(cachedWeather['condition']),
+              humidity: cachedWeather['humidity'] ?? 65,
+              windSpeed: cachedWeather['windSpeed'] ?? 12,
+              cityName: cachedWeather['city'] ?? 'Miskolc',
+              description: cachedWeather['description'] ?? 'Derült',
+              timestamp: DateTime.now(),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      print('🔄 Háttér frissítés hiba: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Alkalmazás visszatéréskor frissítés
+      _refreshDataInBackground();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
     _masterController.dispose();
     super.dispose();
   }
@@ -129,31 +194,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // Nagyon részletes napszak-alapú köszöntések
     if (hour >= 5 && hour < 9) {
-      if (hour < 6) return 'Korán kelő! 🌅';
-      if (hour < 7) return 'Szuper reggelt! ☀️';
-      if (hour < 8) return 'Jó reggelt! 🌞';
+      if (hour < 6) return 'Korán kelő!';
+      if (hour < 7) return 'Szuper reggelt!';
+      if (hour < 8) return 'Jó reggelt!';
       return 'Kellemes reggelt! ☕';
     } else if (hour >= 9 && hour < 12) {
-      if (hour < 10) return 'Jó délelőttöt! 🌤️';
-      if (hour < 11) return 'Szép délelőttöt! ☀️';
-      return 'Kellemes délelőttöt! 🌻';
+      if (hour < 10) return 'Jó délelőttöt!';
+      if (hour < 11) return 'Szép délelőttöt!';
+      return 'Kellemes délelőttöt!';
     } else if (hour >= 12 && hour < 14) {
-      if (minute < 30) return 'Jó napot! 🌞';
-      return 'Kellemes délutánt! 🌤️';
+      if (minute < 30) return 'Jó napot!';
+      return 'Kellemes délutánt!';
     } else if (hour >= 14 && hour < 17) {
-      return 'Szép délutánt! ☀️';
+      return 'Szép délutánt!';
     } else if (hour >= 17 && hour < 19) {
-      if (hour < 18) return 'Jó délutánt! 🌅';
-      return 'Kellemes estét! 🌇';
+      if (hour < 18) return 'Jó délutánt!';
+      return 'Kellemes estét! ';
     } else if (hour >= 19 && hour < 22) {
-      if (hour < 21) return 'Jó estét! 🌆';
-      return 'Kellemes estét! 🌙';
+      if (hour < 21) return 'Jó estét!';
+      return 'Kellemes estét!';
     } else if (hour >= 22 || hour < 5) {
-      if (hour >= 23 || hour < 1) return 'Jó éjszakát! 🌙';
-      if (hour < 3) return 'Késő éjjel? 🌜';
-      return 'Korán kelsz? 🌌';
+      if (hour >= 23 || hour < 1) return 'Jó éjszakát!';
+      if (hour < 3) return 'Késő éjjel?';
+      return 'Korán kelsz?';
     }
-    return 'Szép napot! 🌈';
+    return 'Szép napot!';
   }
 
   Color get _getGreetingAccentColor {
@@ -315,10 +380,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _handleRefresh() async {
     // Időjárás frissítése
     try {
-      _currentWeather = await _weatherService.getCurrentWeather();
+      _currentWeather = await _weatherService.getCurrentWeather(
+        forceRefresh: true,
+      );
     } catch (e) {
-      // Alapértelmezett időjárás hiba esetén
-      _currentWeather = null;
+      print('⚠️ Weather refresh hiba: $e');
+      // Ha az API nem elérhető, próbáljuk meg a cache-ből
+      try {
+        final cachedWeather = await _cacheService.getWeather();
+        if (cachedWeather != null) {
+          _currentWeather = WeatherData(
+            temperature: cachedWeather['temperature'] ?? 22,
+            condition: _parseWeatherCondition(cachedWeather['condition']),
+            humidity: cachedWeather['humidity'] ?? 65,
+            windSpeed: cachedWeather['windSpeed'] ?? 12,
+            cityName: cachedWeather['city'] ?? 'Miskolc',
+            description: cachedWeather['description'] ?? 'Derült',
+            timestamp: DateTime.now(),
+          );
+        } else {
+          _currentWeather = null;
+        }
+      } catch (cacheError) {
+        print('❌ Cache hiba is: $cacheError');
+        _currentWeather = null;
+      }
     }
 
     // Hírek frissítése
@@ -339,7 +425,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildGreetingSection() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      margin: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       child: Stack(
         children: [
           // Fő köszöntő kártya
@@ -438,27 +524,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 1,
+                                color: Colors.white.withOpacity(0.4),
+                                width: 1.2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withOpacity(0.06),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
+                                  spreadRadius: 0,
+                                ),
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.1),
+                                  blurRadius: 2,
+                                  offset: const Offset(0, -1),
+                                  spreadRadius: -1,
                                 ),
                               ],
                             ),
                             child: Text(
                               _currentWeather?.condition ==
                                       WeatherCondition.rainy
-                                  ? 'Vigyázz, esik! Vegyél esernyőt! ☔'
+                                  ? 'Vigyázz, esik! Vigyél esernyőt!'
                                   : _currentWeather?.condition ==
                                       WeatherCondition.snowy
-                                  ? 'Hó esik! Öltözz fel melegen! ❄️'
+                                  ? 'Hó esik! Öltözz fel melegen!'
                                   : _currentWeather?.condition ==
                                       WeatherCondition.sunny
-                                  ? 'Szuper időjárás! Élvezd a napot! ☀️'
+                                  ? 'Szuper időjárás! Élvezd a napot!'
                                   : 'Merre szeretnél utazni ma?',
                               style: const TextStyle(
                                 fontSize: 16,
@@ -507,14 +600,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withOpacity(0.5),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withOpacity(0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.15),
+                    blurRadius: 3,
+                    offset: const Offset(0, -2),
+                    spreadRadius: -1,
                   ),
                 ],
               ),
@@ -975,7 +1075,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.grey.shade300, Colors.grey.shade200],
+            colors: [
+              AppColors.getPrimaryColor(context),
+              AppColors.getPrimaryColor(context).withOpacity(0.85),
+              AppColors.secondaryGreen.withOpacity(0.9),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -985,17 +1089,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              child: Icon(
+              child: const Icon(
                 Symbols.newspaper,
-                color: Colors.grey.shade600,
+                color: Colors.white,
                 size: 24,
               ),
             ),
             Expanded(
-              child: Text(
+              child: const Text(
                 'Jelenleg nincsenek elérhető hírek',
                 style: TextStyle(
-                  color: Colors.grey.shade700,
+                  color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),

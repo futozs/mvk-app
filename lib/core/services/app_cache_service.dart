@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'weather_service.dart';
 
 /// Globális cache service az alkalmazás teljesítményének javítására
 /// Az alkalmazás első indításakor előtölti az összes szükséges adatot
@@ -25,8 +26,8 @@ class AppCacheService {
   static const String _preloadCompletedKey = 'preload_completed';
 
   // Cache időtartamok
-  static const Duration _newsCacheDuration = Duration(minutes: 10);
-  static const Duration _weatherCacheDuration = Duration(minutes: 15);
+  static const Duration _newsCacheDuration = Duration(minutes: 5);
+  static const Duration _weatherCacheDuration = Duration(minutes: 5);
 
   // Előtöltött adatok
   List<Map<String, dynamic>>? _cachedNews;
@@ -121,12 +122,41 @@ class AppCacheService {
     }
   }
 
-  /// Időjárás előtöltése (mock adatokkal, mert nincs valós API)
+  /// Időjárás előtöltése (valós API adatokkal)
   Future<void> _preloadWeather() async {
     try {
       debugPrint('🌤️ AppCache: Időjárás előtöltése...');
 
-      // Mock időjárás adat
+      // Valós időjárás service használata
+      final weatherService = WeatherService();
+      final weatherData = await weatherService.getCurrentWeather(
+        forceRefresh: true,
+      );
+
+      // Weather data konvertálása cache formátumra
+      _cachedWeather = {
+        'temperature': weatherData.temperature,
+        'condition': weatherData.condition.name,
+        'humidity': weatherData.humidity,
+        'windSpeed': weatherData.windSpeed,
+        'city': weatherData.cityName,
+        'description': weatherData.description,
+      };
+
+      // Cache mentése
+      await _prefs?.setString(_weatherDataKey, json.encode(_cachedWeather));
+      await _prefs?.setInt(
+        _weatherTimestampKey,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+
+      debugPrint(
+        '✅ AppCache: Valós időjárás betöltve: ${weatherData.temperature.round()}°C',
+      );
+    } catch (e) {
+      debugPrint('❌ AppCache: Hiba az időjárás betöltésekor: $e');
+
+      // Fallback - alapértelmezett időjárás adat
       _cachedWeather = {
         'temperature': 22,
         'condition': 'sunny',
@@ -142,10 +172,6 @@ class AppCacheService {
         _weatherTimestampKey,
         DateTime.now().millisecondsSinceEpoch,
       );
-
-      debugPrint('✅ AppCache: Időjárás betöltve');
-    } catch (e) {
-      debugPrint('❌ AppCache: Hiba az időjárás betöltésekor: $e');
     }
   }
 

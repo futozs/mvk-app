@@ -62,9 +62,9 @@ class WeatherData {
 
     switch (condition) {
       case WeatherCondition.sunny:
-        return isNight ? '🌜✨' : '☀️🌟';
+        return isNight ? '🌜' : '☀️';
       case WeatherCondition.partlyCloudy:
-        return isNight ? '☁️🌙' : '⛅☀️';
+        return isNight ? '☁️' : '⛅';
       case WeatherCondition.cloudy:
         return '☁️💭';
       case WeatherCondition.rainy:
@@ -83,15 +83,15 @@ class WeatherData {
   List<String> get weatherParticles {
     switch (condition) {
       case WeatherCondition.rainy:
-        return ['💧', '💦', '🌧️'];
+        return ['💧', '', '🌧️'];
       case WeatherCondition.snowy:
-        return ['❄️', '🌨️', '⭐'];
+        return ['❄️', '🌨️', ''];
       case WeatherCondition.thunderstorm:
-        return ['⚡', '💧', '🌩️'];
+        return ['', '💧', '🌩️'];
       case WeatherCondition.sunny:
-        return ['☀️', '🌟', '✨'];
+        return ['☀️', '', '✨'];
       case WeatherCondition.windy:
-        return ['💨', '🍃', '🌪️'];
+        return ['💨', '', '🌪️'];
       default:
         return ['☁️', '💭'];
     }
@@ -110,7 +110,7 @@ class WeatherService {
   // Cache az API hívások csökkentésére
   WeatherData? _cachedWeather;
   DateTime? _lastFetchTime;
-  static const Duration _cacheDuration = Duration(minutes: 25); // 25 perc cache
+  static const Duration _cacheDuration = Duration(minutes: 5); // 5 perc cache
 
   // Singleton pattern a service-hez
   static final WeatherService _instance = WeatherService._internal();
@@ -169,9 +169,8 @@ class WeatherService {
         return _cachedWeather!;
       }
 
-      print('🔄 Fallback mock adatok használata...');
-      // Hiba esetén mock adatokat adunk vissza
-      return _getMockWeatherData();
+      // Ha nincs cache és az API nem elérhető, dobunk egy hibát
+      throw Exception('Időjárási adatok nem elérhetők és nincs cache-elt adat');
     }
   }
 
@@ -247,74 +246,12 @@ class WeatherService {
     return WeatherCondition.cloudy;
   }
 
-  WeatherData _getMockWeatherData() {
-    final random = Random();
-    final hour = DateTime.now().hour;
-
-    // Napi ciklushoz igazított mock adatok
-    WeatherCondition condition;
-    double baseTemp;
-
-    if (hour >= 6 && hour < 12) {
-      // Reggel
-      condition =
-          random.nextBool()
-              ? WeatherCondition.sunny
-              : WeatherCondition.partlyCloudy;
-      baseTemp = 18 + random.nextDouble() * 8; // 18-26°C
-    } else if (hour >= 12 && hour < 18) {
-      // Délután
-      final conditions = [
-        WeatherCondition.sunny,
-        WeatherCondition.partlyCloudy,
-        WeatherCondition.rainy,
-      ];
-      condition = conditions[random.nextInt(conditions.length)];
-      baseTemp = 22 + random.nextDouble() * 10; // 22-32°C
-    } else if (hour >= 18 && hour < 22) {
-      // Este
-      condition =
-          random.nextBool()
-              ? WeatherCondition.partlyCloudy
-              : WeatherCondition.cloudy;
-      baseTemp = 16 + random.nextDouble() * 8; // 16-24°C
-    } else {
-      // Éjjel
-      condition = WeatherCondition.cloudy;
-      baseTemp = 12 + random.nextDouble() * 6; // 12-18°C
-    }
-
-    // Évszakhoz igazítás (május)
-    baseTemp += 5; // Tavaszi plusz hőmérséklet
-
-    final descriptions = {
-      WeatherCondition.sunny: 'Napos',
-      WeatherCondition.partlyCloudy: 'Részben felhős',
-      WeatherCondition.cloudy: 'Felhős',
-      WeatherCondition.rainy: 'Esős',
-      WeatherCondition.thunderstorm: 'Viharos',
-      WeatherCondition.snowy: 'Havas',
-      WeatherCondition.foggy: 'Ködös',
-      WeatherCondition.windy: 'Szeles',
-    };
-
-    return WeatherData(
-      temperature: baseTemp,
-      condition: condition,
-      description: descriptions[condition] ?? 'Változó',
-      humidity: 45 + random.nextInt(40), // 45-85%
-      windSpeed: random.nextDouble() * 15, // 0-15 km/h
-      cityName: 'Miskolc',
-      timestamp: DateTime.now(),
-    );
-  }
-
   // Óránkénti előrejelzés cache-eléssel
   List<WeatherData>? _cachedHourlyForecast;
   DateTime? _lastHourlyFetchTime;
   static const Duration _hourlyForecastCacheDuration = Duration(
-    hours: 2,
-  ); // 2 órás cache az óránkénti előrejelzéshez
+    minutes: 30,
+  ); // 30 perces cache az óránkénti előrejelzéshez
 
   Future<List<WeatherData>> getHourlyForecast({
     bool forceRefresh = false,
