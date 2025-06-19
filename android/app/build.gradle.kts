@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "hu.mvk.zrt.mvk_app"
+    namespace = "hu.remobilon.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "hu.mvk.zrt.mvk_app"
+        applicationId = "hu.remobilon.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

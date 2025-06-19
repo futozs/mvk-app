@@ -55,7 +55,7 @@ void main() async {
   final authService = AuthService();
 
   runApp(
-    MVKApp(
+    ReMobilonApp(
       themeService: themeService,
       appStateManager: appStateManager,
       authService: authService,
@@ -63,12 +63,12 @@ void main() async {
   );
 }
 
-class MVKApp extends StatelessWidget {
+class ReMobilonApp extends StatelessWidget {
   final ThemeService themeService;
   final AppStateManager appStateManager;
   final AuthService authService;
 
-  const MVKApp({
+  const ReMobilonApp({
     super.key,
     required this.themeService,
     required this.appStateManager,
@@ -87,7 +87,7 @@ class MVKApp extends StatelessWidget {
       child: Consumer2<ThemeService, AppStateManager>(
         builder: (context, themeService, appStateManager, child) {
           return MaterialApp(
-            title: 'MVK Miskolc',
+            title: 'reMOBILON',
             debugShowCheckedModeBanner: false,
             theme: AppThemes.lightTheme,
             darkTheme: AppThemes.darkTheme,

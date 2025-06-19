@@ -1,5 +1,5 @@
-name: mvk_app
-description: "MVK mobil alkalmazás - modern közösségi közlekedési menetrend és járatkövetés"
+name: remobilon
+description: "reMOBILON - modern közösségi közlekedési menetrend és járatkövetés Miskolchoz"
 publish_to: 'none'
 
 version: 1.0.0+1

@@ -1,4 +1,4 @@
-package hu.mvk.zrt.mvk_app
+package hu.remobilon.app
 
 import io.flutter.embedding.android.FlutterActivity
 

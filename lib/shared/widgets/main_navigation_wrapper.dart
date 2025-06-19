@@ -90,8 +90,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       child: Scaffold(
         body: Column(
           children: [
-            // MVK Header csík
-            _buildMVKHeader(context),
+            // reMOBILON Header csík
+            _buildReMobilonHeader(context),
             // Fő tartalom - Optimalizált PageView a swipe funkcionalitással
             Expanded(
               child: PageView(
@@ -197,7 +197,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     );
   }
 
-  Widget _buildMVKHeader(BuildContext context) {
+  Widget _buildReMobilonHeader(BuildContext context) {
     return Container(
       color: AppColors.getBackgroundColor(context),
       child: SafeArea(
@@ -237,7 +237,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               ),
               const SizedBox(width: 14),
               Text(
-                'MVK Miskolc',
+                'reMOBILON',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,

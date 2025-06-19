@@ -1,6 +1,6 @@
-# MVK App 🚌
+# reMOBILON 🚌
 
-Modern Flutter alkalmazás a Miskolci Városi Közlekedés (MVK) menetrendjének és járatkövetésének megjelenítésére.
+Modern Flutter alkalmazás a Miskolci közlekedés menetrendjének és járatkövetésének megjelenítésére.
 
 ## FIGYELEM - ALPHA VERZIÓ!
 
@@ -102,7 +102,7 @@ Az alkalmazás támogatja a Google fiókkal történő bejelentkezést és a ked
 
 **Gyors beállítás fejlesztőknek:**
 1. Firebase projekt létrehozása a [Firebase Console](https://console.firebase.google.com/)-on
-2. Android app hozzáadása a projekthez (`hu.mvk.zrt.mvk_app` package névvel)
+2. Android app hozzáadása a projekthez (`hu.remobilon.app` package névvel)
 3. `google-services.json` letöltése és elhelyezése: `android/app/google-services.json`
 4. SHA-1 ujjlenyomat hozzáadása a Firebase projekthez:
    ```bash

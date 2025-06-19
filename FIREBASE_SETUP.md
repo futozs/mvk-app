@@ -1,6 +1,6 @@
 # 🔥 Firebase Google Bejelentkezés Beállítási Útmutató
 
-Ez az útmutató lépésről lépésre végigvezet a Firebase Google Sign-In integrációján az MVK alkalmazásban.
+Ez az útmutató lépésről lépésre végigvezet a Firebase Google Sign-In integrációján a reMOBILON alkalmazásban.
 
 ## 📋 Előfeltételek
 
@@ -13,7 +13,7 @@ Ez az útmutató lépésről lépésre végigvezet a Firebase Google Sign-In int
 
 1. **Menj a [Firebase Console](https://console.firebase.google.com/)-ra**
 2. **Kattints a "Create a project" gombra**
-3. **Add meg a projekt nevét** (pl.: `mvk-app-project`)
+3. **Add meg a projekt nevét** (pl.: `remobilon-app-project`)
 4. **Engedélyezd a Google Analytics-et** (opcionális)
 5. **Válaszd ki vagy hozz létre egy Analytics fiókot**
 6. **Kattints a "Create project" gombra**
@@ -23,11 +23,11 @@ Ez az útmutató lépésről lépésre végigvezet a Firebase Google Sign-In int
 1. **A Firebase Console-ban kattints az Android ikonra**
 2. **Töltsd ki az Android package name mezőt:**
    ```
-   hu.mvk.zrt.mvk_app
+   hu.remobilon.app
    ```
 3. **App nickname (opcionális):**
    ```
-   MVK App
+   reMOBILON
    ```
 4. **Debug signing certificate SHA-1** - ezt a következő paranccsal kapod meg:
    ```bash
@@ -85,7 +85,7 @@ plugins {
 3. **Menj a "Sign-in method" fülre**
 4. **Kattints a "Google" providerre**
 5. **Kapcsold be az "Enable" kapcsolót**
-6. **Állítsd be a "Project public-facing name" mezőt** (pl. "MVK App")
+6. **Állítsd be a "Project public-facing name" mezőt** (pl. "reMOBILON")
 7. **Válaszd ki a "Project support email"-t** (a saját email címed)
 8. **Kattints a "Save" gombra**
 
@@ -210,4 +210,4 @@ Ha problémába ütközöl:
 
 ## ✨ Készen vagy!
 
-Most már teljes mértékben működik a Google bejelentkezés és a felhő szinkronizáció az MVK alkalmazásban! 🎉
+Most már teljes mértékben működik a Google bejelentkezés és a felhő szinkronizáció a reMOBILON alkalmazásban! 🎉

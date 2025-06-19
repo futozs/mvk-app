@@ -189,7 +189,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     // Térkép réteg
                     TileLayer(
                       urlTemplate: _mapStyles[_selectedMapStyle]!.url,
-                      userAgentPackageName: 'com.mvk.miskolc.app',
+                      userAgentPackageName: 'hu.remobilon.app',
                       maxZoom: 18,
                       subdomains:
                           _mapStyles[_selectedMapStyle]!.subdomains ??

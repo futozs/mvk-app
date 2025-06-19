@@ -460,7 +460,7 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               children: [
                 Text(
-                  'MVK Miskolc',
+                  'reMOBILON',
                   style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.w900,
