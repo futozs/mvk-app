@@ -284,8 +284,17 @@ Ez DEVELOPER_ERROR, ami azt jelenti:
 2. `cp lib/firebase_options.dart.example lib/firebase_options.dart`
 3. `cp android/app/google-services.json.example android/app/google-services.json`
 4. Töltsd ki a saját Firebase adataiddal
-5. `flutter clean && flutter pub get`
-6. `flutter run`
+5. Másold be a GTFS adatokat az `assets/mvkzrt/` mappába
+6. `flutter clean && flutter pub get`
+7. `flutter run`
+
+## 🗂️ GTFS Adatok
+
+Az alkalmazás működéséhez szükséges a `assets/mvkzrt/` mappában elhelyezett GTFS adatok:
+- `*.txt` fájlok: GTFS formátumú menetrend adatok
+- `*.json` fájlok: Feldolgozott JSON formátumú adatok
+
+**Fontos:** Ezek az adatok NEM kerülnek fel a Git repository-ba biztonsági okokból!
 
 ---
 

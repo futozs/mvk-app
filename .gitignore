@@ -103,10 +103,8 @@ pids
 *.pid
 *.seed
 *.pid.lock
-mvkzrt/
 TESZT WEB/
 *.sh
-*.txt
 *.html
 *.css
 *.json
@@ -114,9 +112,14 @@ TESZT WEB/
 !pubspec.lock
 !analysis_options.yaml
 !android/app/src/main/AndroidManifest.xml
+!android/app/google-services.json.example
 !ios/Runner/Info.plist
 !web/index.html
 !web/manifest.json
+!assets/mvkzrt/**/*.txt
+!assets/mvkzrt/**/*.json
+!**/mvkzrt/**/*.txt
+!**/mvkzrt/**/*.json
 from_0_0_3_to_104617_183122_44.sql
 test_mobile_api.dart
 test_mvk_api.dart  
@@ -126,7 +129,6 @@ asd.py
 mvk_proxy_server.js
 start_proxy.sh
 mvk_app.iml
-mvkzrt/
 TESZT WEB/
 node_modules/
 .idea/
@@ -135,6 +137,8 @@ node_modules/
 *.sh
 *.sql
 *.txt
+!assets/mvkzrt/**/*.txt
+!**/mvkzrt/**/*.txt
 *.html
 *.css
 *.json

@@ -24,7 +24,7 @@ class GtfsService {
 
   Future<void> _loadRoutes() async {
     try {
-      final data = await rootBundle.loadString('mvkzrt/routes.txt');
+      final data = await rootBundle.loadString('assets/mvkzrt/routes.txt');
       final lines = data.split('\n');
 
       // Első sor a header, kihagyjuk
@@ -55,7 +55,7 @@ class GtfsService {
 
   Future<void> _loadStops() async {
     try {
-      final data = await rootBundle.loadString('mvkzrt/stops.txt');
+      final data = await rootBundle.loadString('assets/mvkzrt/stops.txt');
       final lines = data.split('\n');
 
       _stops =
@@ -85,7 +85,7 @@ class GtfsService {
 
   Future<void> _loadStopTimes() async {
     try {
-      final data = await rootBundle.loadString('mvkzrt/stop_times.txt');
+      final data = await rootBundle.loadString('assets/mvkzrt/stop_times.txt');
       final lines = data.split('\n');
 
       // Csak az első 1000 sort töltjük be a teljesítmény miatt
