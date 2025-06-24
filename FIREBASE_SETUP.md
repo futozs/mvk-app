@@ -1,22 +1,78 @@
-# 🔥 Firebase Google Bejelentkezés Beállítási Útmutató
+# 🔥 Firebase Beállítási Útmutató - reMOBILON
 
-Ez az útmutató lépésről lépésre végigvezet a Firebase Google Sign-In integrációján a reMOBILON alkalmazásban.
+Ez az útmutató lépésről lépésre bemutatja, hogyan állítsd be a Firebase integrációt a reMOBILON alkalmazáshoz.
 
 ## 📋 Előfeltételek
 
-- Flutter fejlesztői környezet beállítva
+- Flutter SDK telepítve
 - Android Studio vagy VS Code
 - Google fiók
-- Internet kapcsolat
+- Node.js telepítve (Firebase CLI-hez)
 
-## 🚀 1. lépés: Firebase Projekt Létrehozása
+## 🚀 1. lépés: Firebase projekt létrehozása
 
-1. **Menj a [Firebase Console](https://console.firebase.google.com/)-ra**
-2. **Kattints a "Create a project" gombra**
-3. **Add meg a projekt nevét** (pl.: `remobilon-app-project`)
-4. **Engedélyezd a Google Analytics-et** (opcionális)
-5. **Válaszd ki vagy hozz létre egy Analytics fiókot**
-6. **Kattints a "Create project" gombra**
+1. Menj a [Firebase Console](https://console.firebase.google.com/)-ra
+2. Kattints a "Create a project" vagy "Add project" gombra
+3. Add meg a projekt nevét (pl. "mvk-app")
+4. Válaszd ki, hogy szeretnél-e Google Analytics-et használni
+5. Kattints a "Create project" gombra
+
+## 🔧 2. lépés: Flutter Firebase CLI telepítése
+
+Nyisd meg a terminált és futtasd az alábbi parancsokat:
+
+```bash
+# Firebase CLI telepítése (ha még nincs telepítve)
+npm install -g firebase-tools
+
+# Firebase CLI bejelentkezés
+firebase login
+
+# FlutterFire CLI telepítése
+flutter pub global activate flutterfire_cli
+
+# PATH beállítása (zshrc-hez)
+echo 'export PATH="$PATH":"$HOME/.pub-cache/bin"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## 📱 3. lépés: Android alkalmazás hozzáadása
+
+1. A Firebase Console-ban kattints az Android ikonra
+2. Package name: `hu.remobilon.app` (vagy saját package neved)
+3. App nickname: `reMOBILON Android`
+4. **FONTOS:** SHA-1 certificate fingerprint megszerzése:
+
+```bash
+# Debug keystore SHA-1 lekérése
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+5. Másold ki a SHA-1 értéket és illeszd be a Firebase Console-ba
+6. Kattints a "Register app" gombra
+7. **Töltsd le a `google-services.json` fájlt** és helyezd el: `android/app/google-services.json`
+
+## 🍎 4. lépés: iOS alkalmazás hozzáadása (opcionális)
+
+1. A Firebase Console-ban kattints az iOS ikonra
+2. iOS bundle ID: `hu.remobilon.hu` (vagy saját bundle id)
+3. App nickname: `reMOBILON iOS`
+4. **Töltsd le a `GoogleService-Info.plist` fájlt** és helyezd el: `ios/Runner/GoogleService-Info.plist`
+
+## ⚡ 5. lépés: Firebase konfiguráció generálása
+
+A projekt gyökérkönyvtárában futtasd:
+
+```bash
+# Firebase projekt konfigurálása
+flutterfire configure
+
+# Válaszd ki a Firebase projekted
+# Válaszd ki a platformokat (Android, iOS)
+# Konfirm the configuration
+```
+
+Ez automatikusan létrehozza a `lib/firebase_options.dart` fájlt.
 
 ## 📱 2. lépés: Android App Hozzáadása
 
@@ -89,125 +145,149 @@ plugins {
 7. **Válaszd ki a "Project support email"-t** (a saját email címed)
 8. **Kattints a "Save" gombra**
 
-## 🗄️ 6. lépés: Firestore Database Beállítása
+## 🔐 6. lépés: Firebase szolgáltatások engedélyezése
 
-### Database Létrehozása:
+### Authentication beállítása:
+1. Firebase Console → Authentication → Get started
+2. Sign-in method → Google → Enable
+3. Support email beállítása
+4. Save
 
-1. **A Firebase Console-ban menj a "Firestore Database" menüpontra**
-2. **Kattints a "Create database" gombra**
-3. **Válaszd a "Start in test mode" opciót** (később módosítható)
-4. **Válassz egy régiót** (ajánlott: `europe-west3` - Frankfurt)
-5. **Kattints a "Done" gombra**
+### Firestore Database beállítása:
+1. Firebase Console → Firestore Database → Create database
+2. Start in test mode (később változtathatod production-re)
+3. Válassz egy lokációt (europe-west3 ajánlott EU-hoz)
 
-### Biztonsági Szabályok Beállítása:
+### Storage beállítása:
+1. Firebase Console → Storage → Get started
+2. Start in test mode
+3. Válassz egy lokációt
 
-1. **Menj a "Rules" fülre**
-2. **Cseréld ki a meglévő szabályokat erre:**
+## 📝 7. lépés: Szükséges Android fájlok létrehozása
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Felhasználók csak a saját adataikat olvashatják/írhatják
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
+### `android/app/src/main/res/values/styles.xml`
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme applied to the Android Application as soon as it is started. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!-- Show a splash screen on the activity. Automatically removed when
+             Flutter draws its first frame -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
     
-    // Felhasználói kedvencek
-    match /users/{userId}/favorites/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
+    <!-- Theme applied to the Android Application after the splash screen. -->
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>
 ```
 
-3. **Kattints a "Publish" gombra**
-
-### Firestore API Engedélyezése:
-
-1. **Menj a következő linkre:** 
-   ```
-   https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=PROJEKT_ID
-   ```
-   (Cseréld ki a `PROJEKT_ID`-t a saját Firebase projekt ID-dra)
-2. **Kattints az "ENABLE" gombra**
-3. **Várj néhány percet, hogy a változások életbe lépjenek**
-
-## 📦 7. lépés: Flutter Függőségek
-
-A `pubspec.yaml` fájlban már be vannak állítva a következő csomagok:
-```yaml
-dependencies:
-  firebase_core: ^2.32.0
-  firebase_auth: ^4.20.0
-  google_sign_in: ^6.2.1
-  cloud_firestore: ^4.17.5
+### `android/app/src/main/res/xml/network_security_config.xml`
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">192.168.1.0/24</domain>
+    </domain-config>
+</network-security-config>
 ```
 
-##  8. lépés: nope
+### `android/app/src/main/res/drawable/launch_background.xml`
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/white" />
+    <!-- Itt adhatsz hozzá saját splash screen képet -->
+</layer-list>
+```
 
-1. nincs 8. lépés
-   
-## ✅ 9. lépés: Tesztelés
+## 🏗️ 8. lépés: Projekt build és futtatás
 
-1. **Indítsd el az alkalmazást:**
-   ```bash
-   flutter run
-   ```
+```bash
+# Projekt tisztítása
+flutter clean
 
-2. **Teszteld a bejelentkezést:**
-   - Kattints a profil ikonra a navigációs sávban
-   - Próbálj meg bejelentkezni Google fiókkal
-   - Ellenőrizd, hogy megjelenik-e a profilkép
+# Dependencies telepítése
+flutter pub get
 
-3. **Teszteld a szinkronizációt:**
-   - Adj hozzá kedvenceket
-   - Kapcsold be a felhő szinkronizációt
-   - Ellenőrizd a Firestore Console-ban, hogy mentődnek-e az adatok
+# Android build
+flutter build apk --debug
 
-## 🚨 Hibakeresés
+# Alkalmazás futtatása
+flutter run
+```
 
-### "sign_in_failed, ApiException: 10" hiba
-- **Ok:** Hiányzó vagy hibás SHA-1 ujjlenyomat
-- **Megoldás:** Add hozzá a debug SHA-1 ujjlenyomatot a Firebase projekthez
+## 📋 9. lépés: GitHub repository előkészítése
 
-### "A Firebase App named [DEFAULT] already exists" hiba
-- **Ok:** A Firebase többször van inicializálva
-- **Megoldás:** Már megoldva a kódban try-catch blokkal
+### Fontos fájlok másolása:
+1. Másold át `lib/firebase_options.dart` → `lib/firebase_options.dart.example`
+2. Másold át `android/app/google-services.json` → `android/app/google-services.json.example`
+3. Távolítsd el az érzékeny adatokat az example fájlokból
 
-### google-services.json hiányzik
-- **Ok:** A fájl nincs a megfelelő helyen
-- **Megoldás:** Helyezd be az `android/app/` mappába
+### .gitignore ellenőrzése:
+Győződj meg róla, hogy a `.gitignore` fájl tartalmazza:
+```gitignore
+# 🔐 FIREBASE ÉRZÉKENY ADATOK
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
-## 🔒 Biztonsági Megjegyzések
+# ⚠️ XML fájlok KIVÉTELEI - ezek kellenek!
+!android/app/src/main/res/**/*.xml
+!ios/**/*.xml
+```
 
-1. **SOHA ne commitold a következő fájlokat:**
-   - `google-services.json`
-   - `GoogleService-Info.plist`
-   - `.env` fájl
-   - Bármilyen API kulcs
+## 🐛 Hibaelhárítás
 
-2. **Production környezetben:**
-   - Használj production SHA-1 ujjlenyomatot
-   - Állítsd be a Firestore security rules-t
-   - Engedélyezd a domain korlátozásokat
+### Google Sign-In nem működik:
+1. Ellenőrizd, hogy a `google-services.json` fájl az `android/app/` mappában van
+2. Ellenőrizd, hogy a SHA-1 fingerprint helyes a Firebase Console-ban
+3. Győződj meg róla, hogy a Google Sign-In engedélyezve van a Firebase Authentication-ban
+4. Próbáld meg: `flutter clean && flutter pub get`
 
-3. **A .gitignore fájl már tartalmazza ezeket:**
-   ```gitignore
-   android/app/google-services.json
-   ios/Runner/GoogleService-Info.plist
-   .env
-   .env.*
-   ```
+### Build hibák:
+1. `flutter clean && flutter pub get`
+2. Ellenőrizd, hogy minden szükséges XML fájl létezik
+3. Restart Android Studio/VS Code
+4. Ellenőrizd a `android/app/build.gradle.kts` fájlban a Google Services plugin-t
 
-## 📞 Segítség
+### Firebase kapcsolódási problémák:
+1. Ellenőrizd az internet kapcsolatot
+2. Ellenőrizd a Firebase projekt beállításait
+3. Nézd meg a console log-okat a részletes hibaüzenetekért
 
-Ha problémába ütközöl:
-1. Ellenőrizd a Firebase Console logs-okat
-2. Nézd meg a Flutter/Android logokat
-3. Győződj meg róla, hogy minden függőség frissítve van
-4. Tisztítsd meg a build cache-t: `flutter clean && flutter pub get`
+### "ApiException: 10" hiba:
+Ez DEVELOPER_ERROR, ami azt jelenti:
+1. SHA-1 fingerprint nem stimmel
+2. Package name nem egyezik
+3. `google-services.json` hibás vagy hiányzó
 
-## ✨ Készen vagy!
+## 📚 További információk
 
-Most már teljes mértékben működik a Google bejelentkezés és a felhő szinkronizáció a reMOBILON alkalmazásban! 🎉
+- [FlutterFire dokumentáció](https://firebase.flutter.dev/)
+- [Firebase Console](https://console.firebase.google.com/)
+- [Flutter Firebase Codelab](https://firebase.google.com/codelabs/firebase-get-to-know-flutter)
+
+## ⚠️ Biztonsági megjegyzések
+
+- A `firebase_options.dart` fájl NE legyen commitolva a git repository-ba
+- A `google-services.json` és `GoogleService-Info.plist` fájlok NE legyenek commitolva
+- Használj environment változókat production környezetben
+- Firebase Security Rules beállítása production előtt kötelező
+
+## 🎯 Gyors setup új projekthez
+
+1. Clone a repository
+2. `cp lib/firebase_options.dart.example lib/firebase_options.dart`
+3. `cp android/app/google-services.json.example android/app/google-services.json`
+4. Töltsd ki a saját Firebase adataiddal
+5. `flutter clean && flutter pub get`
+6. `flutter run`
+
+---
+
+**Készítette:** reMOBILON fejlesztői csapat  
+**Utolsó frissítés:** 2025. június 25.

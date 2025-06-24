@@ -100,7 +100,6 @@ flutter:
     - assets/icons/
     - assets/lottie/
     - assets/rive/
-    - mvkzrt/
     - .env
 
   # A Material Design alapértelmezett fontjait használjuk

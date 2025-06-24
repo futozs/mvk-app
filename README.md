@@ -1,10 +1,49 @@
-# reMOBILON 🚌
+# 🚌 reMOBILON - Modern Közösségi Közlekedési App
 
-Modern Flutter alkalmazás a Miskolci közlekedés menetrendjének és járatkövetésének megjelenítésére.
+Modern közösségi közlekedési menetrend és járatkövetés Miskolchoz.
 
-## FIGYELEM - ALPHA VERZIÓ!
+## ⚡ Gyors kezdés
 
-**EZ AZ ALKALMAZÁS MÉG CSAK EGY ÖTLET SZINTJÉN VAN!**
+### 1. Repository klónozása
+```bash
+git clone https://github.com/YOUR_USERNAME/mvk-app.git
+cd mvk-app
+```
+
+### 2. Firebase konfiguráció
+```bash
+# Example fájlok másolása
+cp lib/firebase_options.dart.example lib/firebase_options.dart
+cp android/app/google-services.json.example android/app/google-services.json
+
+# ⚠️ FONTOS: Töltsd ki a saját Firebase adataiddal a fájlokban!
+# Részletes útmutató: FIREBASE_SETUP.md
+```
+
+### 3. Dependencies telepítése
+```bash
+flutter pub get
+```
+
+### 4. Alkalmazás futtatása
+```bash
+flutter run
+```
+
+## 🔥 Firebase beállítás
+
+Részletes Firebase beállítási útmutató: **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)**
+
+### Szükséges lépések:
+1. Firebase projekt létrehozása
+2. Android/iOS app hozzáadása
+3. SHA-1 fingerprint beállítása
+4. Firebase szolgáltatások engedélyezése
+5. Konfigurációs fájlok letöltése
+
+## ⚠️ ALPHA VERZIÓ FIGYELMEZTETÉS
+
+**EZ AZ ALKALMAZÁS MÉG FEJLESZTÉS ALATT ÁLL!**
 
 - **NINCS BEFEJEZVE** - A fejlesztés még korai szakaszban tart
 - **NEM HASZNÁLHATÓ ÉLES KÖRNYEZETBEN** - Csak tesztelési célokra

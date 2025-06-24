@@ -149,7 +149,8 @@ node_modules/
 !ios/Runner/Info.plist
 !web/index.html
 !web/manifest.json
-*.xml
-!android/app/src/main/AndroidManifest.xml
+# ⚠️ FONTOS: XML fájlok KIVÉTELEI - ezek kellenek az alkalmazás működéséhez!
+!android/app/src/main/res/**/*.xml
+!ios/**/*.xml
 *.properties
 !android/gradle.properties
