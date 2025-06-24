@@ -3,12 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService extends ChangeNotifier {
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'profile',
-    ],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   User? _user;
@@ -31,7 +26,7 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
 
       debugPrint('🔄 Google Sign-In kezdeményezése...');
-      
+
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
@@ -42,7 +37,9 @@ class AuthService extends ChangeNotifier {
         return false;
       }
 
-      debugPrint('✅ Google felhasználó sikeresen kiválasztva: ${googleUser.email}');
+      debugPrint(
+        '✅ Google felhasználó sikeresen kiválasztva: ${googleUser.email}',
+      );
 
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
@@ -62,8 +59,10 @@ class AuthService extends ChangeNotifier {
 
       // Once signed in, return the UserCredential
       final userCredential = await _auth.signInWithCredential(credential);
-      
-      debugPrint('🎉 Sikeres Firebase bejelentkezés: ${userCredential.user?.email}');
+
+      debugPrint(
+        '🎉 Sikeres Firebase bejelentkezés: ${userCredential.user?.email}',
+      );
 
       _isLoading = false;
       notifyListeners();
