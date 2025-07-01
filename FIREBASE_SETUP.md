@@ -1,5 +1,7 @@
 # 🔥 Firebase Beállítási Útmutató - reMOBILON
 
+[![English Version](https://img.shields.io/badge/📖_English_Version-blue?style=for-the-badge&logo=readme&logoColor=white)](FIREBASE_SETUP_EN.md)
+
 Ez az útmutató lépésről lépésre bemutatja, hogyan állítsd be a Firebase integrációt a reMOBILON alkalmazáshoz.
 
 ## 📋 Előfeltételek

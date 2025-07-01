@@ -1,12 +1,14 @@
 # 🚌 reMOBILON - Modern Közösségi Közlekedési App
 
+[![English Version](https://img.shields.io/badge/📖_English_Version-blue?style=for-the-badge&logo=readme&logoColor=white)](README_EN.md)
+
 Modern közösségi közlekedési menetrend és járatkövetés Miskolchoz.
 
 ## ⚡ Gyors kezdés
 
 ### 1. Repository klónozása
 ```bash
-git clone https://github.com/YOUR_USERNAME/mvk-app.git
+git clone https://github.com/futozs/mvk-app.git
 cd mvk-app
 ```
 
