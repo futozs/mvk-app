@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Egyszerű launch screen - CSAK egy háttér szín + logó -->
+<!-- Egyszerű launch screen sötét módhoz - CSAK egy háttér szín + logó -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- CSAK egy matt háttér szín -->
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/launch_background_light" />
+            <solid android:color="@color/launch_background_dark" />
         </shape>
     </item>
 

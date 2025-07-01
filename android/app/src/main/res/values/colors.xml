@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch screen background colors -->
+    <!-- Matt szürke világos módhoz -->
+    <color name="launch_background_light">#F5F5F5</color>
+    <!-- Matt sötét szürke sötét módhoz -->
+    <color name="launch_background_dark">#1E1E1E</color>
+</resources>

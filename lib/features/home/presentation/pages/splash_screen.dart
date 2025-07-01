@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/app_cache_service.dart';
 import '../../../../core/services/app_state_manager.dart';
@@ -51,6 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
   double _loadingProgress = 0.0;
   String _loadingMessage = 'Inizializálás...';
   bool _isFirstRun = false;
+  bool _disposed = false; // Flag to prevent setState after dispose
 
   // Prerendering
   Widget? _prerenderedMainApp;
@@ -112,6 +116,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startLoadingSequence() async {
+    // Debug: Splash screen indítása
+    debugPrint('🚀 SplashScreen: Loading sequence kezdése...');
+
     // Gyors UI animációk indítása
     _backgroundController.forward();
     _particlesController.repeat();
@@ -121,6 +128,9 @@ class _SplashScreenState extends State<SplashScreen>
 
     await Future.delayed(const Duration(milliseconds: 200));
     _textController.forward();
+
+    // CRITICAL: Disclaimer ellenőrzés MINDIG az elején
+    await _checkAndShowDisclaimer();
 
     // Cache állapot ellenőrzése
     await _checkCacheStatus();
@@ -132,8 +142,59 @@ class _SplashScreenState extends State<SplashScreen>
     await _navigateToHome();
   }
 
+  /// Disclaimer ellenőrzése és megjelenítése
+  Future<void> _checkAndShowDisclaimer() async {
+    debugPrint('⚠️ SplashScreen: Disclaimer ellenőrzés kezdése...');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final disclaimerShown = prefs.getBool('disclaimer_shown') ?? false;
+
+      debugPrint(
+        '🔍 SplashScreen: Disclaimer státusz - megjelent: $disclaimerShown',
+      );
+
+      if (!disclaimerShown) {
+        debugPrint('📋 SplashScreen: Disclaimer megjelenítése...');
+        _safeSetState(() {
+          _loadingMessage = 'Felhasználói feltételek...';
+          _loadingProgress = 0.05;
+        });
+
+        // BLOKKOLÁS: Megvárjuk hogy elfogadják
+        final accepted = await _showDisclaimerDialog();
+
+        if (accepted) {
+          // Disclaimer elfogadva, mentjük
+          await prefs.setBool('disclaimer_shown', true);
+          debugPrint('✅ SplashScreen: Disclaimer elfogadva és elmentve');
+          _isFirstRun = true;
+        } else {
+          // Nem fogadták el - APP BEZÁRÁSA
+          debugPrint('❌ SplashScreen: Disclaimer elutasítva - app bezárása');
+          // SystemNavigator.pop() használata az app teljes bezárásához
+          SystemNavigator.pop();
+          return; // NEM FOLYTATJUK!
+        }
+      } else {
+        debugPrint('✅ SplashScreen: Disclaimer már elfogadva, folytatás...');
+        _isFirstRun = false;
+      }
+    } catch (e) {
+      debugPrint('❌ SplashScreen: Hiba a disclaimer ellenőrzésben: $e');
+      // Fallback: ha hiba van, mutassuk a disclaimer-t
+      _isFirstRun = true;
+      final accepted = await _showDisclaimerDialog();
+      if (!accepted) {
+        // SystemNavigator.pop() használata az app teljes bezárásához
+        SystemNavigator.pop();
+        return;
+      }
+    }
+  }
+
   Future<void> _checkCacheStatus() async {
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Alkalmazás állapotának ellenőrzése...';
       _loadingProgress = 0.1;
     });
@@ -141,15 +202,12 @@ class _SplashScreenState extends State<SplashScreen>
     // Cache service inicializálása
     await _cacheService.initialize();
 
-    // Ellenőrizzük hogy ez első indítás-e
-    _isFirstRun = !_cacheService.isPreloadCompleted;
-
-    setState(() {
+    _safeSetState(() {
       _loadingProgress = 0.2;
     });
 
     if (_isFirstRun) {
-      setState(() {
+      _safeSetState(() {
         _loadingMessage = 'Első indítás - ez lassabb lehet...';
       });
       await Future.delayed(const Duration(milliseconds: 1000));
@@ -168,28 +226,28 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _performFirstRunLoading() async {
     // 1. Hírek betöltése
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Hírek betöltése...';
       _loadingProgress = 0.3;
     });
     await _cacheService.getNews(); // Valódi hírek betöltése
 
     // 2. Időjárás betöltése
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Időjárás adatok betöltése...';
       _loadingProgress = 0.5;
     });
     await _cacheService.getWeather(); // Valódi időjárás betöltése
 
     // 3. Főoldalak előre renderelése
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Oldalak előkészítése...';
       _loadingProgress = 0.7;
     });
     await _prerenderMainApp();
 
     // 4. Képek és beállítások
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Képek és beállítások előkészítése...';
       _loadingProgress = 0.85;
     });
@@ -198,7 +256,7 @@ class _SplashScreenState extends State<SplashScreen>
     ); // Egyéb előkészítések
 
     // 5. Befejezés
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Alkalmazás előkészítése...';
       _loadingProgress = 1.0;
     });
@@ -217,19 +275,17 @@ class _SplashScreenState extends State<SplashScreen>
       );
 
       // Force build a widget tree
-      if (mounted) {
-        setState(() {
-          // Widget tree frissítése
-        });
+      _safeSetState(() {
+        // Widget tree frissítése
+      });
 
-        // Kis várakozás a render process-hez
-        await Future.delayed(const Duration(milliseconds: 100));
+      // Kis várakozás a render process-hez
+      await Future.delayed(const Duration(milliseconds: 100));
 
-        // Precache images, widgets, stb.
-        await _precacheResources();
+      // Precache images, widgets, stb.
+      await _precacheResources();
 
-        debugPrint('✅ SplashScreen: Főoldalak előre renderelése kész!');
-      }
+      debugPrint('✅ SplashScreen: Főoldalak előre renderelése kész!');
     } catch (e) {
       debugPrint('❌ SplashScreen: Prerender hiba: $e');
       // Fallback - ha a prerender nem sikerül, folytatjuk
@@ -264,19 +320,19 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _performQuickLoading() async {
     // Gyors betöltés korábbi felhasználóknak
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Cache ellenőrzése...';
       _loadingProgress = 0.4;
     });
     await Future.delayed(const Duration(milliseconds: 150));
 
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Adatok frissítése...';
       _loadingProgress = 0.8;
     });
     await Future.delayed(const Duration(milliseconds: 100));
 
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Alkalmazás indítása...';
       _loadingProgress = 1.0;
     });
@@ -284,7 +340,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToHome() async {
-    setState(() {
+    _safeSetState(() {
       _loadingMessage = 'Kész!';
     });
 
@@ -299,14 +355,483 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
+  /// Disclaimer dialog megjelenítése első indításkor
+  Future<bool> _showDisclaimerDialog() async {
+    debugPrint('🎯 SplashScreen: Disclaimer dialog építése...');
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // Nem lehet bezárni kattintással
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (BuildContext context) {
+        debugPrint('📱 SplashScreen: Disclaimer dialog megjelenítve');
+
+        // Dark mode ellenőrzése
+        final brightness = MediaQuery.of(context).platformBrightness;
+        final isDarkMode = brightness == Brightness.dark;
+
+        // Színek dark mode alapján
+        final backgroundColor =
+            isDarkMode ? Colors.grey.shade900 : Colors.white;
+        final cardColor =
+            isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50;
+        final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+        return WillPopScope(
+          onWillPop: () async => false, // Nem lehet visszalépéssel bezárni
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ), // Szélesebb
+            child: Container(
+              width: double.maxFinite, // Teljes szélesség
+              constraints: BoxConstraints(
+                maxHeight:
+                    MediaQuery.of(context).size.height * 0.9, // Max magasság
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [backgroundColor, cardColor, backgroundColor],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDarkMode ? 0.5 : 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 15),
+                    spreadRadius: 5,
+                  ),
+                  BoxShadow(
+                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    blurRadius: 40,
+                    offset: const Offset(0, 0),
+                    spreadRadius: 10,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Kisebb fejléc
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 20,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.primaryGreen,
+                          AppColors.secondaryGreen,
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Kisebb figyelmeztetés ikon
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.warning_rounded,
+                            color: Colors.orange,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'FIGYELMEZTETÉS',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            Text(
+                              'ALPHA VERZIÓ',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withOpacity(0.9),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Scrollable tartalom
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Nem hivatalos figyelmeztetés
+                          _buildDisclaimerSection(
+                            '🚫 NEM HIVATALOS ALKALMAZÁS',
+                            'Ez az alkalmazás NEM a Miskolci Városi Közlekedési Zrt. hivatalos szoftvere! '
+                                'Egy független fejlesztő készítette, és NINCS KAPCSOLATBAN a hivatalos MVK-val.',
+                            Colors.red.shade600,
+                            isDarkMode,
+                            textColor,
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Alpha verzió figyelmeztetés
+                          _buildDisclaimerSection(
+                            '⚠️ ALPHA VERZIÓ - CSAK DEMO!',
+                            'Ez egy korai fejlesztési verzió! A legtöbb funkció még NEM MŰKÖDIK. '
+                                'Ez csak egy bemutató arról, hogyan fog kinézni a végleges alkalmazás.',
+                            Colors.orange.shade600,
+                            isDarkMode,
+                            textColor,
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Adatvédelem
+                          _buildDisclaimerSection(
+                            '🔒 ADATVÉDELEM',
+                            'Az alkalmazás NEM gyűjt személyes adatokat és NEM végez adathalászatot. '
+                                'A teljes forráskód nyílt és elérhető a GitHub-on.',
+                            Colors.green.shade600,
+                            isDarkMode,
+                            textColor,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // GitHub link - kompaktabb
+                          GestureDetector(
+                            onTap: () async {
+                              try {
+                                final Uri url = Uri.parse(
+                                  'https://github.com/futozs/mvk-app',
+                                );
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(
+                                    url,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint('GitHub link megnyitási hiba: $e');
+                              }
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    isDarkMode
+                                        ? Colors.grey.shade800
+                                        : Colors.blue.shade50,
+                                    isDarkMode
+                                        ? Colors.grey.shade700
+                                        : Colors.blue.shade100,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color:
+                                      isDarkMode
+                                          ? Colors.blue.shade700
+                                          : Colors.blue.shade200,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade600,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.code,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'NYÍLT FORRÁSKÓD',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color:
+                                              isDarkMode
+                                                  ? Colors.blue.shade300
+                                                  : Colors.blue.shade700,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isDarkMode
+                                              ? Colors.grey.shade900
+                                              : Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color:
+                                            isDarkMode
+                                                ? Colors.grey.shade600
+                                                : Colors.grey.shade300,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.link,
+                                          color: Colors.blue.shade600,
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            'github.com/futozs/mvk-app',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.blue.shade600,
+                                              fontFamily: 'monospace',
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.touch_app,
+                                        color:
+                                            isDarkMode
+                                                ? Colors.grey.shade400
+                                                : Colors.grey.shade600,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        'Kattints a megnyitáshoz',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                          color:
+                                              isDarkMode
+                                                  ? Colors.grey.shade400
+                                                  : Colors.grey.shade600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Gombok
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                    child: Column(
+                      children: [
+                        // Elfogadom gomb
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(
+                                context,
+                              ).pop(true); // TRUE = elfogadva
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              elevation: 8,
+                              shadowColor: AppColors.primaryGreen.withOpacity(
+                                0.4,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(23),
+                              ),
+                            ),
+                            child: const Text(
+                              'ELFOGADOM ÉS FOLYTATOM',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Kilépés gomb
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.of(
+                                context,
+                              ).pop(false); // FALSE = elutasítva
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  isDarkMode
+                                      ? Colors.grey.shade400
+                                      : Colors.grey.shade600,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(19),
+                              ),
+                            ),
+                            child: const Text(
+                              'Kilépés az alkalmazásból',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    return result ?? false; // Ha null, akkor false (elutasítva)
+  }
+
+  Widget _buildDisclaimerSection(
+    String title,
+    String content,
+    Color color,
+    bool isDarkMode,
+    Color textColor,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(isDarkMode ? 0.15 : 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(isDarkMode ? 0.4 : 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+              color: textColor,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    _disposed = true; // Mark as disposed to prevent setState calls
     _logoController.dispose();
     _textController.dispose();
     _backgroundController.dispose();
     _particlesController.dispose();
     _progressController.dispose();
     super.dispose();
+  }
+
+  // Safe setState that checks if widget is still mounted and not disposed
+  void _safeSetState(VoidCallback fn) {
+    if (!_disposed && mounted) {
+      setState(fn);
+    }
   }
 
   @override
